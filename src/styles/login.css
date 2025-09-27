@@ -1,0 +1,160 @@
+
+:root {
+  /* Colores principales */
+  --color-primary: #21a89b;      /* título */
+  --color-accent: #19c5e7;       /* bordes inputs */
+  --btn-grad-start: #21a84c;     /* botón: inicio gradiente */
+  --btn-grad-end: #5ce2f6;       /* botón: fin gradiente */
+
+  /* Fondo e imagen */
+  --bg-image: url('/bg-plant.jpg'); /* cambia la ruta si lo necesitas */
+  --bg-overlay-color: rgba(255, 255, 255, 0.201); /* “transparencia” del fondo */
+
+  /* Tarjeta */
+  --card-bg: rgba(255, 255, 255, 0.9);
+  --card-radius: 16px;
+
+  /* Sombras */
+  --shadow-strong: 0 8px 24px rgba(0, 0, 0, 0.2);
+  --shadow-hover: 0 6px 20px rgba(139, 92, 246, 0.4);
+
+  /* Espaciados */
+  --space-1: 1rem;
+  --space-2: 1.5rem;
+  --space-3: 2rem;
+
+  /* Tipografía */
+  --title-size: 1.5rem;
+  --title-size-sm: 1.25rem;
+  --input-font-size: 0.9rem;
+
+  /* Radio y medidas varias */
+  --input-radius: 12px;
+  --button-radius: 12px;
+  --social-size: 48px;
+}
+
+/* =========================
+   Página de Login
+   ========================= */
+
+/* Background container con overlay ajustable vía variable */
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  padding: var(--space-1);
+
+  /* capa semitransparente + imagen (ajusta --bg-overlay-color en :root) */
+  background:
+    linear-gradient(var(--bg-overlay-color), var(--bg-overlay-color)),
+    var(--bg-image);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+/* Tarjeta */
+.login-card {
+  max-width: 400px;
+  width: 100%;
+  margin: auto;
+  padding: var(--space-3);
+  background: var(--card-bg);
+  border-radius: var(--card-radius);
+  box-shadow: var(--shadow-strong);
+  position: relative;
+  z-index: 10;
+  /* Si quieres efecto vidrio, descomenta:
+     backdrop-filter: blur(6px); */
+}
+
+/* Título */
+.login-title {
+  font-size: var(--title-size);
+  font-weight: bold;
+  color: var(--color-primary);
+  text-align: center;
+  margin-bottom: var(--space-2);
+}
+
+/* Inputs */
+.login-input {
+  width: 100%;
+  padding: 1rem 1rem;
+  margin-top: 1rem;
+  border: 1px solid var(--color-accent);
+  border-radius: var(--input-radius);
+  background: #f9fafb;
+  font-size: var(--input-font-size);
+  box-sizing: border-box;
+}
+
+/* Botón */
+.login-button {
+  display: block;
+  width: auto;
+  min-width: 50%;
+  padding: 0.75rem 2rem;
+  margin-top: 1rem;
+  background: linear-gradient(to right, var(--btn-grad-start), var(--btn-grad-end));
+  color: #fff;
+  font-weight: bold;
+  border: none;
+  border-radius: var(--button-radius);
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  margin: 1rem auto 0;
+  text-align: center;
+}
+
+.login-button:disabled,
+.login-button[aria-disabled="true"] {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.login-button:hover:not(:disabled) {
+  transform: scale(1.03);
+  box-shadow: var(--shadow-hover);
+}
+
+/* Botones sociales */
+.social-button {
+  width: var(--social-size);
+  height: var(--social-size);
+  border-radius: 50%;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  font-weight: bold;
+  margin-top: 1rem;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  transition: transform 0.2s;
+  border: none;
+  cursor: pointer;
+}
+
+.social-button:hover {
+  transform: scale(1.1);
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .login-card {
+    padding: 1.25rem;
+    border-radius: 12px;
+  }
+
+  .login-title {
+    font-size: var(--title-size-sm);
+  }
+
+  .login-input {
+    padding: 0.85rem;
+  }
+}
