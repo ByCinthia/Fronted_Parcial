@@ -9,8 +9,8 @@ import type {
   AsignacionResidencia,
   CreateAsignacionResidenciaPayload,
   ContratoAlquiler,
-  CreateContratoAlquilerPayload,
-} from "./types";
+  CrearContrato,
+} from "../Vivienda/types";
 
 const API_BASE = (import.meta.env.VITE_API_BASE as string) || "/api/v1";
 
@@ -47,8 +47,15 @@ export async function fetchVehiculos(): Promise<Vehiculo[]> {
   if (hasResultsArray(data)) return data.results as Vehiculo[];
   return [];
 }
-
 export async function createVehiculo(payload: CreateVehiculoPayload): Promise<Vehiculo> {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve({ id: Date.now(), ...payload });
+    }, 500);
+  });
+}
+
+/*export async function createVehiculo(payload: CreateVehiculoPayload): Promise<Vehiculo> {
   const res = await fetch(`${API_BASE}/vehiculos/`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Accept: "application/json" },
@@ -60,7 +67,26 @@ export async function createVehiculo(payload: CreateVehiculoPayload): Promise<Ve
     throw new Error(`createVehiculo failed: ${res.status} ${res.statusText} - ${body.slice(0, 800)}`);
   }
   return safeJson<Vehiculo>(res);
+}*/
+// src/pages/vivienda/service.ts
+import type { UpdateVehiculoPayload} from "../Vivienda/types";
+
+export async function updateVehiculo(id: number, payload: UpdateVehiculoPayload): Promise<Vehiculo> {
+  const res = await fetch(`${API_BASE}/vehiculos/${id}/`, {
+    method: "PUT", // o "PATCH" si tu backend soporta parciales
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify(payload),
+    credentials: "include",
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`updateVehiculo failed: ${res.status} ${res.statusText} - ${body.slice(0, 800)}`);
+  }
+
+  return safeJson<Vehiculo>(res);
 }
+
 
 /* ---------------- Mascotas ---------------- */
 export async function fetchMascotas(): Promise<Mascota[]> {
@@ -90,6 +116,23 @@ export async function createMascota(payload: CreateMascotaPayload): Promise<Masc
 }
 
 /* ---------------- Unidades ---------------- */
+export async function fetchUnidades(): Promise<Unidad[]> {
+  const res = await fetch(`${API_BASE}/unidades/`, {
+    headers: { Accept: "application/json" },
+    credentials: "include",
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(
+      `fetchUnidades failed: ${res.status} ${res.statusText} - ${body.slice(0, 800)}`
+    );
+  }
+  const data = await safeJson<unknown>(res);
+  if (Array.isArray(data)) return data as Unidad[];
+  if (hasResultsArray(data)) return data.results as Unidad[];
+  return [];
+}
+
 export async function createUnidad(payload: CreateUnidadPayload): Promise<Unidad> {
   const res = await fetch(`${API_BASE}/unidades/`, {
     method: "POST",
@@ -102,6 +145,28 @@ export async function createUnidad(payload: CreateUnidadPayload): Promise<Unidad
     throw new Error(`createUnidad failed: ${res.status} ${res.statusText} - ${body.slice(0, 800)}`);
   }
   return safeJson<Unidad>(res);
+}
+
+
+/* ---------------- Residencias ---------------- */
+
+export async function fetchResidencias(): Promise<AsignacionResidencia[]> {
+  const res = await fetch(`${API_BASE}/asignaciones/`, {
+    headers: { Accept: "application/json" },
+    credentials: "include",
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(
+      `fetchResidencias failed: ${res.status} ${res.statusText} - ${body.slice(0, 800)}`
+    );
+  }
+
+  const data = await safeJson<unknown>(res);
+  if (Array.isArray(data)) return data as AsignacionResidencia[];
+  if (hasResultsArray(data)) return data.results as AsignacionResidencia[];
+  return [];
 }
 
 /* ---------------- Asignar Residencia ---------------- */
@@ -123,7 +188,7 @@ export async function createAsignacionResidencia(
 
 /* ---------------- Contrato alquiler ---------------- */
 export async function createContratoAlquiler(
-  payload: CreateContratoAlquilerPayload
+  payload: CrearContrato
 ): Promise<ContratoAlquiler> {
   const res = await fetch(`${API_BASE}/contratos-alquiler/`, {
     method: "POST",

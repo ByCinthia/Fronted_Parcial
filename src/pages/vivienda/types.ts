@@ -82,6 +82,16 @@ export interface CreateVehiculoPayload {
   observacion?: string;
 }
 
+/** Payload para actualizar vehículo */
+export interface UpdateVehiculoPayload {
+  unidad?: number;
+  responsable?: number;
+  placa?: string;
+  marca?: string;
+  color?: string;
+  observacion?: string;
+}
+
 /* -------------------------
    Mascotas
 ------------------------- */
@@ -110,17 +120,9 @@ export interface CreateMascotaPayload {
 /* -------------------------
    Contrato de alquiler
 ------------------------- */
-export interface ContratoAlquiler {
-  id: number;
-  unidad: number;
-  inquilino: number;
-  fecha_inicio: string;     // ISO
-  monto_mensual: string;    // ej "350.00"
-  garantia: string;         // ej "500.00"
-  activo: boolean;
-}
 
-export interface CreateContratoAlquilerPayload {
+export interface ContratoAlquiler{
+  id: number;
   unidad: number;
   inquilino: number;
   fecha_inicio: string;
@@ -129,26 +131,20 @@ export interface CreateContratoAlquilerPayload {
   activo: boolean;
 }
 
+
 /* -------------------------
    Contrato general (dueño - inquilino)
 ------------------------- */
-export interface Contrato {
-  id: number;
+export interface CrearContrato {
+  id?: number; // Hacer que "id" sea opcional
   unidad: number;
-  duenno: number;
-  inquilino: number;
-  start: string;             // ISO
-  monto_mensual: string;
-  is_active: boolean;
-  descripcion?: string;
-}
-
-export interface CreateContratoPayload {
-  unidad: number;
-  duenno: number;
+  dueño: number;
   inquilino: number;
   start: string;
   monto_mensual: string;
   is_active: boolean;
-  descripcion?: string;
+  descripcion: string;
 }
+
+
+

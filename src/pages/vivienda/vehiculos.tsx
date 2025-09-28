@@ -2,14 +2,14 @@
 import React, { useEffect, useState } from "react";
 import type { Vehiculo, CreateVehiculoPayload } from "./types";
 import * as svc from "./service";
-import "./vivienda.css";
 
-export default function VehiculosPage(){
+
+export default function VehiculosPage() {
   const [items, setItems] = useState<Vehiculo[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Form nuevo vehículo (coincide con CreateVehiculoPayload)
+  // form crear
   const [openForm, setOpenForm] = useState(false);
   const [fUnidad, setFUnidad] = useState<number | "">("");
   const [fResponsable, setFResponsable] = useState<number | "">("");
@@ -20,8 +20,15 @@ export default function VehiculosPage(){
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
 
-  const [q, setQ] = useState(""); // búsqueda simple por placa/marca/unidad
+  // edición
+  const [editId, setEditId] = useState<number | null>(null);
+  const [editData, setEditData] = useState<Partial<Vehiculo>>({});
+  const [updating, setUpdating] = useState(false);
+  const [updateError, setUpdateError] = useState<string | null>(null);
 
+  const [q, setQ] = useState("");
+
+  // cargar lista
   useEffect(() => {
     let mounted = true;
     async function load() {
@@ -32,7 +39,6 @@ export default function VehiculosPage(){
         if (!mounted) return;
         setItems(list);
       } catch (err) {
- 
         console.error("fetchVehiculos error:", err);
         if (!mounted) return;
         setError(err instanceof Error ? err.message : String(err));
@@ -42,7 +48,9 @@ export default function VehiculosPage(){
       }
     }
     load();
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   const filtered = items.filter((v) => {
@@ -51,12 +59,11 @@ export default function VehiculosPage(){
     return target.includes(q.toLowerCase());
   });
 
-  /* Crear vehículo */
+  /* Crear */
   async function handleCreate(e?: React.FormEvent) {
     if (e) e.preventDefault();
     setCreateError(null);
 
-    // validaciones básicas
     if (!fPlaca.trim()) {
       setCreateError("La placa es obligatoria.");
       return;
@@ -85,15 +92,9 @@ export default function VehiculosPage(){
       if (typeof svc.createVehiculo === "function") {
         created = await svc.createVehiculo(payload);
       } else {
-        // fallback local (dev)
-        created = {
-          id: Date.now(),
-          ...payload,
-        } as Vehiculo;
+        created = { id: Date.now(), ...payload } as Vehiculo;
       }
-
       setItems((s) => [created, ...s]);
-      // limpiar form
       setFUnidad("");
       setFResponsable("");
       setFPlaca("");
@@ -102,11 +103,40 @@ export default function VehiculosPage(){
       setFObservacion("");
       setOpenForm(false);
     } catch (err) {
-
       console.error("createVehiculo error:", err);
       setCreateError(err instanceof Error ? err.message : String(err));
     } finally {
       setCreating(false);
+    }
+  }
+
+  /* Editar */
+  function startEdit(v: Vehiculo) {
+    setEditId(v.id);
+    setEditData({ ...v });
+    setUpdateError(null);
+  }
+
+  async function handleUpdate(e?: React.FormEvent) {
+    if (e) e.preventDefault();
+    if (!editId) return;
+
+    setUpdating(true);
+    setUpdateError(null);
+    try {
+      let updated: Vehiculo;
+      if (typeof svc.updateVehiculo === "function") {
+       updated = await svc.updateVehiculo(editId, editData);
+           }
+
+      setItems((s) => s.map((x) => (x.id === editId ? updated : x)));
+      setEditId(null);
+      setEditData({});
+    } catch (err) {
+      console.error("updateVehiculo error:", err);
+      setUpdateError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setUpdating(false);
     }
   }
 
@@ -131,95 +161,81 @@ export default function VehiculosPage(){
         </div>
       </div>
 
+      {/* crear */}
       {openForm && (
         <form className="card" onSubmit={handleCreate} style={{ marginBottom: 12 }}>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-            <input
-              placeholder="Placa *"
-              value={fPlaca}
-              onChange={(e) => setFPlaca(e.target.value)}
-              style={{ minWidth: 160 }}
-            />
-
-            <input
-              placeholder="Unidad (número) *"
-              value={fUnidad}
-              onChange={(e) => {
-                const v = e.target.value;
-                setFUnidad(v === "" ? "" : Number(v));
-              }}
-              style={{ width: 120 }}
-            />
-
-            <input
-              placeholder="Responsable (id) *"
-              value={fResponsable}
-              onChange={(e) => {
-                const v = e.target.value;
-                setFResponsable(v === "" ? "" : Number(v));
-              }}
-              style={{ width: 140 }}
-            />
-
+            <input placeholder="Placa *" value={fPlaca} onChange={(e) => setFPlaca(e.target.value)} />
+            <input placeholder="Unidad *" value={fUnidad} onChange={(e) => setFUnidad(Number(e.target.value) || "")} />
+            <input placeholder="Responsable *" value={fResponsable} onChange={(e) => setFResponsable(Number(e.target.value) || "")} />
             <input placeholder="Marca" value={fMarca} onChange={(e) => setFMarca(e.target.value)} />
             <input placeholder="Color" value={fColor} onChange={(e) => setFColor(e.target.value)} />
             <input placeholder="Observación" value={fObservacion} onChange={(e) => setFObservacion(e.target.value)} />
-
-            <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
-              <button className="btn secondary" type="button" onClick={() => setOpenForm(false)}>
-                Cancelar
-              </button>
-              <button className="btn" type="submit" disabled={creating}>
-                {creating ? "Registrando..." : "Registrar"}
-              </button>
-            </div>
+            <button className="btn" type="submit" disabled={creating}>
+              {creating ? "Registrando..." : "Registrar"}
+            </button>
           </div>
-
-          {createError && <div style={{ color: "red", marginTop: 8 }}>{createError}</div>}
+          {createError && <div style={{ color: "red" }}>{createError}</div>}
         </form>
       )}
 
+      {/* tabla */}
       {loading ? (
         <div className="loading">Cargando vehículos...</div>
       ) : error ? (
         <div style={{ color: "red" }}>{error}</div>
       ) : (
         <div className="card">
-          <table className="table" role="table" style={{ width: "100%", borderCollapse: "collapse" }}>
+          <table className="table">
             <thead>
               <tr>
-                <th style={{ textAlign: "left", padding: 8 }}>Placa</th>
-                <th style={{ textAlign: "left", padding: 8 }}>Unidad</th>
-                <th style={{ textAlign: "left", padding: 8 }}>Responsable</th>
-                <th style={{ textAlign: "left", padding: 8 }}>Marca</th>
-                <th style={{ textAlign: "left", padding: 8 }}>Color</th>
+                <th>Placa</th>
+                <th>Unidad</th>
+                <th>Responsable</th>
+                <th>Marca</th>
+                <th>Color</th>
+                <th>Acciones</th>
               </tr>
             </thead>
-
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={5} style={{ textAlign: "center", padding: 16 }}>
+                  <td colSpan={6} style={{ textAlign: "center" }}>
                     No se encontraron vehículos.
                   </td>
                 </tr>
               ) : (
-                filtered.map((v) => (
-                  <tr key={v.id}>
-                    <td style={{ padding: 8 }}>{v.placa}</td>
-                    <td style={{ padding: 8 }}>{v.unidad}</td>
-                    <td style={{ padding: 8 }}>{v.responsable}</td>
-                    <td style={{ padding: 8 }}>{v.marca ?? "-"}</td>
-                    <td style={{ padding: 8 }}>{v.color ?? "-"}</td>
-                  </tr>
-                ))
+                filtered.map((v) =>
+                  editId === v.id ? (
+                    <tr key={v.id}>
+                      <td><input value={editData.placa || ""} onChange={(e) => setEditData({ ...editData, placa: e.target.value })} /></td>
+                      <td><input value={editData.unidad || ""} onChange={(e) => setEditData({ ...editData, unidad: Number(e.target.value) || 0 })} /></td>
+                      <td><input value={editData.responsable || ""} onChange={(e) => setEditData({ ...editData, responsable: Number(e.target.value) || 0 })} /></td>
+                      <td><input value={editData.marca || ""} onChange={(e) => setEditData({ ...editData, marca: e.target.value })} /></td>
+                      <td><input value={editData.color || ""} onChange={(e) => setEditData({ ...editData, color: e.target.value })} /></td>
+                      <td>
+                        <button className="btn" onClick={handleUpdate} disabled={updating}>Guardar</button>
+                        <button className="btn secondary" onClick={() => setEditId(null)}>Cancelar</button>
+                        {updateError && <div style={{ color: "red" }}>{updateError}</div>}
+                      </td>
+                    </tr>
+                  ) : (
+                    <tr key={v.id}>
+                      <td>{v.placa}</td>
+                      <td>{v.unidad}</td>
+                      <td>{v.responsable}</td>
+                      <td>{v.marca ?? "-"}</td>
+                      <td>{v.color ?? "-"}</td>
+                      <td>
+                        <button className="btn secondary" onClick={() => startEdit(v)}>Editar</button>
+                      </td>
+                    </tr>
+                  )
+                )
               )}
             </tbody>
           </table>
-
-          <div className="list-footer" style={{ marginTop: 12 }}>
-            {items.length} vehículo(s) en el sistema.
-          </div>
+          <div className="list-footer">{items.length} vehículo(s) en el sistema.</div>
         </div>
       )}
     </div>
