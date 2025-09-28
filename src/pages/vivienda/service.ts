@@ -1,50 +1,139 @@
-import type { Pagination, Copropietario, Vehiculo, Mascota } from "./types";
+// src/pages/vivienda/service.ts
+import type {
+  Vehiculo,
+  CreateVehiculoPayload,
+  Mascota,
+  CreateMascotaPayload,
+  Unidad,
+  CreateUnidadPayload,
+  AsignacionResidencia,
+  CreateAsignacionResidenciaPayload,
+  ContratoAlquiler,
+  CreateContratoAlquilerPayload,
+} from "./types";
 
+const API_BASE = (import.meta.env.VITE_API_BASE as string) || "/api/v1";
 
-const API_BASE = (import.meta.env.VITE_API_BASE as string) || "/api/v1/vehiculos/"; // ejemplo: http://localhost:8000
-
-
-
-function getHeaders(token?: string) {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
-  if (token) headers["Authorization"] = `Bearer ${token}`;
-  return headers;
-}
-
-async function handleResp<T>(res: Response): Promise<T> {
+async function safeJson<T>(res: Response): Promise<T> {
+  const ct = res.headers.get("content-type") ?? "";
   const text = await res.text();
-  const data = text ? JSON.parse(text) : null;
-  if (!res.ok) {
-    const msg = (data && (data.detail || data.error || data.message)) || res.statusText || `HTTP ${res.status}`;
-    throw new Error(String(msg));
+  if (!ct.includes("application/json")) {
+    throw new Error(`Unexpected content-type: ${ct}. Body: ${text.slice(0, 800)}`);
   }
-  return data as T;
+  try {
+    return JSON.parse(text) as T;
+  } catch (err) {
+    throw new Error(
+      `Invalid JSON response: ${(err as Error).message}. Body: ${text.slice(0, 800)}`
+    );
+  }
 }
 
-export async function fetchCopropietarios(page = 1, search = "", token?: string): Promise<Pagination<Copropietario>> {
-  const q = new URLSearchParams({ page: String(page), search });
-  const res = await fetch(`${API_BASE}/copropietarios/?${q.toString()}`, { headers: getHeaders(token) });
-  return handleResp<Pagination<Copropietario>>(res);
-}
-export async function createCopropietario(payload: Partial<Copropietario>, token?: string): Promise<Copropietario> {
-  const res = await fetch(`${API_BASE}/copropietarios/`, { method: "POST", headers: getHeaders(token), body: JSON.stringify(payload) });
-  return handleResp<Copropietario>(res);
+function hasResultsArray(x: unknown): x is { results: unknown[] } {
+  if (typeof x !== "object" || x === null) return false;
+  const maybe = (x as { results?: unknown }).results;
+  return Array.isArray(maybe);
 }
 
-export async function fetchVehiculos(page = 1, token?: string): Promise<Pagination<Vehiculo>> {
-  const res = await fetch(`${API_BASE}/vehiculos/?page=${page}`, { headers: getHeaders(token) });
-  return handleResp<Pagination<Vehiculo>>(res);
-}
-export async function createVehiculo(payload: Partial<Vehiculo>, token?: string): Promise<Vehiculo> {
-  const res = await fetch(`${API_BASE}/vehiculos/`, { method: "POST", headers: getHeaders(token), body: JSON.stringify(payload) });
-  return handleResp<Vehiculo>(res);
+/* ---------------- Vehículos ---------------- */
+export async function fetchVehiculos(): Promise<Vehiculo[]> {
+  const res = await fetch(`${API_BASE}/vehiculos/`, { headers: { Accept: "application/json" } });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`fetchVehiculos failed: ${res.status} ${res.statusText} - ${body.slice(0, 800)}`);
+  }
+  const data = await safeJson<unknown>(res);
+  if (Array.isArray(data)) return data as Vehiculo[];
+  if (hasResultsArray(data)) return data.results as Vehiculo[];
+  return [];
 }
 
-export async function fetchMascotas(page = 1, token?: string): Promise<Pagination<Mascota>> {
-  const res = await fetch(`${API_BASE}/mascotas/?page=${page}`, { headers: getHeaders(token) });
-  return handleResp<Pagination<Mascota>>(res);
+export async function createVehiculo(payload: CreateVehiculoPayload): Promise<Vehiculo> {
+  const res = await fetch(`${API_BASE}/vehiculos/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify(payload),
+    credentials: "include",
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`createVehiculo failed: ${res.status} ${res.statusText} - ${body.slice(0, 800)}`);
+  }
+  return safeJson<Vehiculo>(res);
 }
-export async function createMascota(payload: Partial<Mascota>, token?: string): Promise<Mascota> {
-  const res = await fetch(`${API_BASE}/mascotas/`, { method: "POST", headers: getHeaders(token), body: JSON.stringify(payload) });
-  return handleResp<Mascota>(res);
+
+/* ---------------- Mascotas ---------------- */
+export async function fetchMascotas(): Promise<Mascota[]> {
+  const res = await fetch(`${API_BASE}/mascotas/`, { headers: { Accept: "application/json" } });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`fetchMascotas failed: ${res.status} ${res.statusText} - ${body.slice(0, 800)}`);
+  }
+  const data = await safeJson<unknown>(res);
+  if (Array.isArray(data)) return data as Mascota[];
+  if (hasResultsArray(data)) return data.results as Mascota[];
+  return [];
+}
+
+export async function createMascota(payload: CreateMascotaPayload): Promise<Mascota> {
+  const res = await fetch(`${API_BASE}/mascotas/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify(payload),
+    credentials: "include",
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`createMascota failed: ${res.status} ${res.statusText} - ${body.slice(0, 800)}`);
+  }
+  return safeJson<Mascota>(res);
+}
+
+/* ---------------- Unidades ---------------- */
+export async function createUnidad(payload: CreateUnidadPayload): Promise<Unidad> {
+  const res = await fetch(`${API_BASE}/unidades/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify(payload),
+    credentials: "include",
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`createUnidad failed: ${res.status} ${res.statusText} - ${body.slice(0, 800)}`);
+  }
+  return safeJson<Unidad>(res);
+}
+
+/* ---------------- Asignar Residencia ---------------- */
+export async function createAsignacionResidencia(
+  payload: CreateAsignacionResidenciaPayload
+): Promise<AsignacionResidencia> {
+  const res = await fetch(`${API_BASE}/asignaciones/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify(payload),
+    credentials: "include",
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`createAsignacionResidencia failed: ${res.status} ${res.statusText} - ${body.slice(0, 800)}`);
+  }
+  return safeJson<AsignacionResidencia>(res);
+}
+
+/* ---------------- Contrato alquiler ---------------- */
+export async function createContratoAlquiler(
+  payload: CreateContratoAlquilerPayload
+): Promise<ContratoAlquiler> {
+  const res = await fetch(`${API_BASE}/contratos-alquiler/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify(payload),
+    credentials: "include",
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`createContratoAlquiler failed: ${res.status} ${res.statusText} - ${body.slice(0, 800)}`);
+  }
+  return safeJson<ContratoAlquiler>(res);
 }

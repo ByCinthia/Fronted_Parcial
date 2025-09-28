@@ -32,6 +32,13 @@
   --input-radius: 12px;
   --button-radius: 12px;
   --social-size: 48px;
+  
+  --runner-thickness: 7px;
+  --runner-length: 40deg;
+  --runner-speed: 4s;
+  --runner-glow: 30px;
+
+
 }
 
 /* =========================
@@ -56,7 +63,7 @@
   background-repeat: no-repeat;
 }
 
-/* Tarjeta */
+/* Tarjeta 
 .login-card {
   max-width: 400px;
   width: 100%;
@@ -67,9 +74,11 @@
   box-shadow: var(--shadow-strong);
   position: relative;
   z-index: 10;
-  /* Si quieres efecto vidrio, descomenta:
-     backdrop-filter: blur(6px); */
-}
+  Si quieres efecto vidrio, descomenta:
+     backdrop-filter: blur(6px); 
+}*/
+
+
 
 /* Título */
 .login-title {
@@ -157,4 +166,61 @@
   .login-input {
     padding: 0.85rem;
   }
+}
+/* Declaramos una propiedad animable para el ángulo */
+@property --runner-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+/* === Borde con ráfaga DETRÁS del card === */
+@property --runner-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+.login-card {
+  max-width: 400px;  /* ancho máximo */
+  width: 100%;       /* ocupa todo el ancho posible hasta el max-width */
+  padding: var(--space-3); /* espacio interno (alto + ancho) */
+  position: relative;
+  z-index: 0; /* asegura que el card esté sobre su ::before */
+  border-radius: var(--card-radius);
+  background: var(--card-bg);
+  box-shadow: var(--shadow-strong);
+  isolation: isolate; /* evita que el borde se mezcle con el contenido */
+}
+
+.login-card.neon::before {
+  --runner-angle: 0deg;
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--card-radius);
+  pointer-events: none;
+  z-index: -1; /* manda la ráfaga detrás */
+
+  /* canal del borde */
+  border: var(--runner-thickness) solid transparent;
+
+  /* interior fijo + borde animado */
+  background:
+    linear-gradient(var(--card-bg), var(--card-bg)) padding-box,
+    conic-gradient(
+      from var(--runner-angle),
+      transparent 0,
+      transparent calc(360deg - var(--runner-length)),
+      #8cdde9 0 360deg
+    ) border-box;
+
+  background-clip: padding-box, border-box;
+
+  filter: drop-shadow(0 0 var(--runner-glow) #5cf6d0);
+
+  animation: runner-angle-spin var(--runner-speed) linear infinite;
+}
+
+@keyframes runner-angle-spin {
+  to { --runner-angle: 360deg; }
 }

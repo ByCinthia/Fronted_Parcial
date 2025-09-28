@@ -4,9 +4,8 @@ import { Routes, Route, Navigate, Link, useLocation } from "react-router-dom";
 import Protected from "../shared/Protected";
 import { useAuth } from "../shared/auth";
 import "../styles/dashboard.css";
-
-/* lazy-load de páginas (mantén los paths según tu estructura) */
-const CopropietariosPage = lazy(() => import("./vivienda/copropietarios"));
+// 👇 Usa el nombre correcto del archivo: Usuario.tsx (con mayúscula)
+const UsuarioPage = lazy(() => import("./usuarios/usuario"));
 const VehiculosPage = lazy(() => import("./vivienda/vehiculos"));
 const MascotasPage = lazy(() => import("./vivienda/mascotas"));
 
@@ -23,16 +22,26 @@ type AuthUser = {
 type MenuItem = {
   id: string;
   label: string;
-  path: string; // path relativo dentro de /app, ej "vivienda" o "vivienda/copropietarios"
+  path: string; // relativo al /app, ej "vivienda/vehiculos"
   roles?: Role[];
   children?: MenuItem[];
 };
 
 /* -------------------------
-   MENU (un solo array, tipado)
+   MENU (limpio según solicitud)
    ------------------------- */
 export const MENU: MenuItem[] = [
-  { id: "home", label: "Inicio", path: "home", roles: ["ADMIN", "GUARD", "RESIDENT"] },
+  {
+    id: "usuarios",
+    label: "Usuarios",
+    path: "usuarios",
+    roles: ["ADMIN", "GUARD"],
+    children: [
+      // Solo conservar "Crear usuario" y "Ver usuarios"
+      { id: "crearUsuario", label: "Crear usuario", path: "usuarios/crear", roles: ["ADMIN"] },
+      { id: "verUsuarios", label: "Ver usuarios", path: "usuarios/list", roles: ["ADMIN"] },
+    ],
+  },
 
   {
     id: "vivienda",
@@ -40,72 +49,23 @@ export const MENU: MenuItem[] = [
     path: "vivienda",
     roles: ["ADMIN"],
     children: [
-      { id: "copropietarios", label: "Copropietarios", path: "vivienda/copropietarios", roles: ["ADMIN"] },
-      { id: "residentes", label: "Residentes", path: "vivienda/residentes", roles: ["ADMIN"] },
-      { id: "vehiculos", label: "Vehículos", path: "vivienda/vehiculos", roles: ["ADMIN", "GUARD"] },
-      { id: "mascotas", label: "Mascotas", path: "vivienda/mascotas", roles: ["ADMIN"] },
+      { id: "crearUnidad", label: "Crear unidad", path: "vivienda/crear-unidad", roles: ["ADMIN"] },
+      { id: "asignarResidencia", label: "Asignar residencia", path: "vivienda/asignar", roles: ["ADMIN"] },
+      { id: "unidad", label: "Unidad", path: "vivienda/unidad", roles: ["ADMIN", "GUARD", "RESIDENT"] },
+      { id: "registrarVehiculos", label: "Registrar vehículos", path: "vivienda/registrar-vehiculos", roles: ["ADMIN", "GUARD"] },
+      { id: "registrarMascota", label: "Registrar mascota", path: "vivienda/registrar-mascota", roles: ["ADMIN"] },
+      { id: "contratoAlquiler", label: "Contrato alquiler", path: "vivienda/contrato-alquiler", roles: ["ADMIN"] },
     ],
   },
 
+  // Otros módulos mínimos (placeholder)
   {
     id: "seguridad",
     label: "Seguridad",
     path: "seguridad",
-    roles: ["ADMIN", "GUARD"],
+    roles: ["ADMIN","GUARD"],
     children: [
-      { id: "accesos", label: "Control accesos", path: "seguridad/accesos", roles: ["ADMIN", "GUARD"] },
-      { id: "visitantes", label: "Visitantes", path: "seguridad/visitantes", roles: ["ADMIN", "GUARD", "RESIDENT"] },
-      { id: "parqueo", label: "Parqueo", path: "seguridad/parqueo", roles: ["ADMIN", "GUARD"] },
-      { id: "alertas", label: "Alertas / IA", path: "seguridad/alertas", roles: ["ADMIN"] },
-    ],
-  },
-
-  {
-    id: "reservas",
-    label: "Reservas",
-    path: "reservas",
-    roles: ["ADMIN", "RESIDENT"],
-    children: [
-      { id: "config", label: "Configuración", path: "reservas/config", roles: ["ADMIN"] },
-      { id: "list", label: "Reservas", path: "reservas/list", roles: ["ADMIN", "RESIDENT"] },
-      { id: "tarifas", label: "Tarifas & inventario", path: "reservas/tarifas", roles: ["ADMIN"] },
-    ],
-  },
-
-  {
-    id: "finanzas",
-    label: "Finanzas",
-    path: "finanzas",
-    roles: ["ADMIN"],
-    children: [
-      { id: "expensas", label: "Expensas", path: "finanzas/expensas", roles: ["ADMIN", "RESIDENT"] },
-      { id: "pagos", label: "Pagos", path: "finanzas/pagos", roles: ["ADMIN"] },
-      { id: "multas", label: "Multas", path: "finanzas/multas", roles: ["ADMIN"] },
-      { id: "recibos", label: "Recibos", path: "finanzas/recibos", roles: ["ADMIN"] },
-      { id: "reportes", label: "Reportes", path: "finanzas/reportes", roles: ["ADMIN"] },
-    ],
-  },
-
-  {
-    id: "servicios",
-    label: "Servicios",
-    path: "servicios",
-    roles: ["ADMIN"],
-    children: [
-      { id: "programacion", label: "Programación", path: "servicios/programacion", roles: ["ADMIN"] },
-      { id: "costos", label: "Costos", path: "servicios/costos", roles: ["ADMIN"] },
-    ],
-  },
-
-  {
-    id: "comunicacion",
-    label: "Comunicación",
-    path: "comunicacion",
-    roles: ["ADMIN", "RESIDENT"],
-    children: [
-      { id: "comunicados", label: "Comunicados", path: "comunicacion/comunicados", roles: ["ADMIN"] },
-      { id: "lecturas", label: "Lecturas", path: "comunicacion/lecturas", roles: ["ADMIN"] },
-      { id: "recordatorios", label: "Recordatorios", path: "comunicacion/recordatorios", roles: ["ADMIN"] },
+      { id: "accesos", label: "Control accesos", path: "seguridad/accesos", roles: ["ADMIN","GUARD"] },
     ],
   },
 
@@ -120,6 +80,16 @@ const Chevron: React.FC<{ open?: boolean }> = ({ open }) => (
     <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
+
+function findMenuItemByPath(pathRel: string): MenuItem | undefined {
+  const queue = [...MENU];
+  while (queue.length) {
+    const cur = queue.shift()!;
+    if (cur.path === pathRel) return cur;
+    if (cur.children) queue.push(...cur.children);
+  }
+  return undefined;
+}
 
 /* -------------------------
    Sidebar
@@ -151,8 +121,8 @@ const Sidebar: React.FC<{
   const userRole = user?.role;
   const canView = (item: MenuItem) => {
     if (!item.roles) return true;
-    if (!userRole) return true; // en dev permitimos mostrar todo si no hay role
-    return item.roles!.includes(userRole);
+    if (!userRole) return true;
+    return item.roles.includes(userRole);
   };
 
   const sidebarClass = ["sidebar", collapsed ? "collapsed" : "", mobileOpen ? "open" : ""].filter(Boolean).join(" ");
@@ -180,7 +150,6 @@ const Sidebar: React.FC<{
           return (
             <div key={item.id} className="nav-group">
               {item.children?.length ? (
-                // botón que alterna el submenú (no navega)
                 <div
                   className={`nav-item ${active ? "active" : ""}`}
                   role="button"
@@ -192,22 +161,15 @@ const Sidebar: React.FC<{
                   aria-expanded={!!openKeys[item.id]}
                 >
                   <div className="left">
-                    <div className="icon" aria-hidden>
-                      {item.label.charAt(0)}
-                    </div>
+                    <div className="icon" aria-hidden>{item.label.charAt(0)}</div>
                     <div className="label">{item.label}</div>
                   </div>
-                  <div className="right">
-                    <Chevron open={!!openKeys[item.id]} />
-                  </div>
+                  <div className="right"><Chevron open={!!openKeys[item.id]} /></div>
                 </div>
               ) : (
-                // item simple -> Link directo a /app/${item.path}
                 <Link to={`/app/${item.path}`} className={`nav-item ${active ? "active" : ""}`} onClick={onCloseMobile} role="link">
                   <div className="left">
-                    <div className="icon" aria-hidden>
-                      {item.label.charAt(0)}
-                    </div>
+                    <div className="icon" aria-hidden>{item.label.charAt(0)}</div>
                     <div className="label">{item.label}</div>
                   </div>
                 </Link>
@@ -221,9 +183,7 @@ const Sidebar: React.FC<{
                     return (
                       <Link key={child.id} to={`/app/${child.path}`} className={`nav-item ${cActive ? "active" : ""}`} onClick={onCloseMobile}>
                         <div className="left">
-                          <div className="icon" aria-hidden>
-                            •
-                          </div>
+                          <div className="icon" aria-hidden>{child.label.charAt(0)}</div>
                           <div className="label">{child.label}</div>
                         </div>
                       </Link>
@@ -247,121 +207,134 @@ const Sidebar: React.FC<{
 /* -------------------------
    Topbar
    ------------------------- */
-const Topbar: React.FC<{ onToggle: () => void; onOpenMobile: () => void }> = ({ onToggle, onOpenMobile }) => {
-  return (
-    <header className="topbar">
-      <div className="left">
-        <button
-          className="btn-icon"
-          type="button"
-          onClick={() => {
-            if (typeof window !== "undefined" && window.innerWidth <= 900) {
-              onOpenMobile();
-            } else {
-              onToggle();
-            }
-          }}
-          aria-label="toggle menu"
-        >
-          ☰
-        </button>
-        <div className="title">Panel</div>
-      </div>
+const Topbar: React.FC<{ onToggle: () => void; onOpenMobile: () => void }> = ({ onToggle, onOpenMobile }) => (
+  <header className="topbar">
+    <div className="left">
+      <button
+        className="btn-icon"
+        type="button"
+        onClick={() => {
+          if (typeof window !== "undefined" && window.innerWidth <= 900) onOpenMobile();
+          else onToggle();
+        }}
+        aria-label="toggle menu"
+      >
+        ☰
+      </button>
+      <div className="title">Panel</div>
+    </div>
 
-      <div className="right">
-        <input className="search-input" placeholder="Buscar..." aria-label="buscar" />
-        <button className="btn-icon" type="button" aria-label="notificaciones">
-          🔔
-        </button>
+    <div className="right">
+      <input className="search-input" placeholder="Buscar..." aria-label="buscar" />
+      <button className="btn-icon" type="button" aria-label="notificaciones">🔔</button>
+    </div>
+  </header>
+);
+
+/* -------------------------
+   EndpointViewer — ejemplos para rutas conservadas
+   ------------------------- */
+const EndpointViewer: React.FC = () => {
+  const location = useLocation();
+  const rel = location.pathname.replace(/^\/app\/?/, "");
+  const item = findMenuItemByPath(rel);
+
+  const examples: Record<string, Record<string, unknown>> = {
+    // Usuarios
+    "usuarios/crear": {
+      username: "fd",
+      password: "pass12345",
+      ci: "3524",
+      first_name: "Juan",
+      last_name: "Ramos",
+      email: "juan@example.com",
+      phone: "555-100",
+      is_active: true,
+      groups: ["admin"],
+    },
+
+    // Vivienda
+    "vivienda/crear-unidad": { code: "A-101", is_active: true },
+    "vivienda/asignar": {
+      user: 2,
+      unidad: 1,
+      is_owner: true,
+      tipo_ocupacion: "propietario",
+      status: "activa",
+      start: "2025-01-01",
+    },
+    "vivienda/registrar-vehiculos": {
+      unidad: 1,
+      responsable: 2,
+      placa: "BAC123",
+      marca: "Toyota",
+      color: "Rojo",
+      observacion: "N/A",
+    },
+    "vivienda/registrar-mascota": {
+      unidad: 1,
+      responsable: 2,
+      nombre: "Rocky",
+      tipo: "perro",
+      raza: "Labrador",
+      activo: true,
+      desde: "2025-02-01",
+    },
+  };
+
+  if (!item) {
+    return (
+      <div>
+        <div className="breadcrumbs">Ayuda</div>
+        <div className="card"><p>Selecciona una opción del menú para ver la ficha/ejemplo (si la página no existe aún, verás esta ayuda).</p></div>
       </div>
-    </header>
+    );
+  }
+
+  const example = examples[item.path];
+
+  return (
+    <div>
+      <div className="breadcrumbs">{item.label}</div>
+      <div className="card">
+        <h3 style={{ marginTop: 0 }}>{item.label}</h3>
+        <p><strong>Ruta (sugerida):</strong> <code>/api/v1/{item.path}</code></p>
+        <div style={{ marginTop: 8 }}>
+          <strong>Descripción</strong>
+          <p className="text-muted">Ficha de ayuda: aqui puedes documentar la funcionalidad o mostrar un payload de ejemplo.</p>
+        </div>
+
+        {example && (
+          <>
+            <div style={{ marginTop: 8 }}><strong>Ejemplo de payload</strong></div>
+            <pre style={{ background: "#0f172a10", padding: 12, borderRadius: 8, overflowX: "auto" }}>
+              {JSON.stringify(example, null, 2)}
+            </pre>
+          </>
+        )}
+      </div>
+    </div>
   );
 };
 
 /* -------------------------
-   Placeholders
+   Placeholders / Summaries
    ------------------------- */
 const Home: React.FC = () => (
   <div>
-    <div className="breadcrumbs">Inicio</div>
+    <div className="breadcrumbs">Usuarios</div>
     <div className="grid cols-3">
-      <div className="card">
-        <div className="card-header">
-          <div className="card-title">Usuarios</div>
-        </div>
-        <div className="stat">
-          <div className="value">1,234</div>
-          <div className="label">Activos</div>
-        </div>
-      </div>
-
-      <div className="card">
-        <div className="card-header">
-          <div className="card-title">Reservas</div>
-        </div>
-        <div className="stat">
-          <div className="value">42</div>
-          <div className="label">Hoy</div>
-        </div>
-      </div>
-
-      <div className="card">
-        <div className="card-header">
-          <div className="card-title">Incidentes</div>
-        </div>
-        <div className="stat">
-          <div className="value">3</div>
-          <div className="label">Sin resolver</div>
-        </div>
-      </div>
+      <div className="card"><div className="card-header"><div className="card-title">Usuarios</div></div><div className="stat"><div className="value">1,234</div><div className="label">Activos</div></div></div>
+      <div className="card"><div className="card-header"><div className="card-title">Reservas</div></div><div className="stat"><div className="value">42</div><div className="label">Hoy</div></div></div>
+      <div className="card"><div className="card-header"><div className="card-title">Incidentes</div></div><div className="stat"><div className="value">3</div><div className="label">Sin resolver</div></div></div>
     </div>
   </div>
 );
 
-const Vivienda: React.FC = () => (
+const ViviendaSummary: React.FC = () => (
   <div>
     <div className="breadcrumbs">Módulo Vivienda</div>
-    <div className="card">
-      <h3 className="card-title">Resumen</h3>
-      <p className="text-muted">Aquí irán las acciones principales del módulo vivienda.</p>
-    </div>
-  </div>
-);
-
-/* (puedes eliminar los placeholders de Copropietarios/Vehiculos si usas las páginas lazy importadas) */
-const Seguridad: React.FC = () => (
-  <div>
-    <div className="breadcrumbs">Seguridad</div>
-    <div className="card">
-      <h3 className="card-title">Monitoreo</h3>
-    </div>
-  </div>
-);
-
-const Reservas: React.FC = () => (
-  <div>
-    <div className="breadcrumbs">Reservas</div>
-    <div className="card">
-      <h3 className="card-title">Reservas</h3>
-    </div>
-  </div>
-);
-
-const Finanzas: React.FC = () => (
-  <div>
-    <div className="breadcrumbs">Finanzas</div>
-    <div className="card">
-      <h3 className="card-title">Finanzas</h3>
-    </div>
-  </div>
-);
-
-const Reportes: React.FC = () => (
-  <div>
-    <div className="breadcrumbs">Reportes</div>
-    <div className="card">
-      <h3 className="card-title">Reportes</h3>
-    </div>
+    <div className="card"><h3 className="card-title">Resumen</h3><p className="text-muted">Acciones del módulo vivienda: crear unidad, asignar residencia, registrar vehículos/mascotas, contrato alquiler.</p></div>
   </div>
 );
 
@@ -370,36 +343,23 @@ const Reportes: React.FC = () => (
    ------------------------- */
 export default function Dashboard() {
   const [collapsed, setCollapsed] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem("sidebar_collapsed") === "1";
-    } catch (e) {
-      // eslint-disable-next-line no-console
-      console.error(e);
-      return false;
-    }
+    try { return localStorage.getItem("sidebar_collapsed") === "1"; } catch (e) { console.error(e); return false; }
   });
 
   const [mobileOpen, setMobileOpen] = useState<boolean>(false);
   const location = useLocation();
 
-  // cerrar drawer móvil al cambiar de ruta
   useEffect(() => {
     if (mobileOpen) setMobileOpen(false);
   }, [location.pathname, mobileOpen]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem("sidebar_collapsed", collapsed ? "1" : "0");
-    } catch (e) {
-      // eslint-disable-next-line no-console
-      console.error("Error storing collapsed state:", e);
-    }
+    try { localStorage.setItem("sidebar_collapsed", collapsed ? "1" : "0"); } catch (e) { console.error("Error storing collapsed state:", e); }
   }, [collapsed]);
 
   const toggleCollapse = () => setCollapsed((c) => !c);
   const openMobile = () => setMobileOpen(true);
   const closeMobile = () => setMobileOpen(false);
-
   const appClass = ["app-layout", mobileOpen ? "drawer-open" : ""].filter(Boolean).join(" ");
 
   return (
@@ -411,48 +371,53 @@ export default function Dashboard() {
 
         <div className="content-container">
           <Routes>
-            <Route element={<Protected />}>
-              <Route path="/" element={<Navigate to="/app/home" replace />} />
-              <Route path="/app/home" element={<Home />} />
+  <Route element={<Protected />}>
+    {/* redirección inicial */}
+    <Route path="/" element={<Navigate to="home" replace />} />
 
-              {/* Lazy-loaded pages */}
-              <Route
-                path="/vivienda/copropietarios"
-                element={
-                  <Suspense fallback={<div>Cargando Copropietarios...</div>}>
-                    <CopropietariosPage />
-                  </Suspense>
-                }
-              />
-              <Route
-                path="/vivienda/vehiculos"
-                element={
-                  <Suspense fallback={<div>Cargando Vehículos...</div>}>
-                    <VehiculosPage />
-                  </Suspense>
-                }
-              />
-              <Route
-                path="/vivienda/mascotas"
-                element={
-                  <Suspense fallback={<div>Cargando Mascotas...</div>}>
-                    <MascotasPage />
-                  </Suspense>
-                }
-              />
+    {/* home */}
+    <Route path="home" element={<Home />} />
 
-              {/* Otros módulos (placeholders) */}
-               <Route path="vivienda" element={<Vivienda />} />
-               <Route path="seguridad" element={<Seguridad />} />
-               <Route path="reservas" element={<Reservas />} />
-               <Route path="finanzas" element={<Finanzas />} />
-               <Route path="reportes" element={<Reportes />} />
-            </Route>
-          </Routes>
+    {/* usuarios */}
+    <Route path="usuarios" element={<Navigate to="usuarios/list" replace />} />
+    <Route
+      path="usuarios/*"
+      element={
+        <Suspense fallback={<div>Cargando Usuarios...</div>}>
+          <UsuarioPage />
+        </Suspense>
+      }
+    />
+
+    {/* vivienda */}
+<Route
+  path="vivienda/registrar-vehiculos"
+  element={
+    <Suspense fallback={<div>Cargando Vehículos...</div>}>
+      <VehiculosPage />
+    </Suspense>
+  }
+/>
+
+<Route
+  path="vivienda/registrar-mascota"
+  element={
+    <Suspense fallback={<div>Cargando Mascotas...</div>}>
+      <MascotasPage />
+    </Suspense>
+  }
+/>
+
+<Route path="vivienda" element={<ViviendaSummary />} />
+
+    {/* fallback */}
+    <Route path="*" element={<EndpointViewer />} />
+  </Route>
+</Routes>
+
         </div>
       </div>
 
-      {/* overlay para mobile drawer */}
       <div className="overlay" onClick={closeMobile} />
     </div>
   );

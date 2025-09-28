@@ -1,42 +1,38 @@
 // src/pages/vivienda/vehiculos.tsx
 import React, { useEffect, useState } from "react";
-import type { Vehiculo } from "./types";
+import type { Vehiculo, CreateVehiculoPayload } from "./types";
 import * as svc from "./service";
 import "./vivienda.css";
 
-export default function VehiculosPage() {
+export default function VehiculosPage(){
   const [items, setItems] = useState<Vehiculo[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [filterTipo, setFilterTipo] = useState<"ALL" | "RESIDENTE" | "VISITANTE" | "SERVICIO">("ALL");
-  const [q, setQ] = useState("");
-
-  // form nuevo vehículo
+  // Form nuevo vehículo (coincide con CreateVehiculoPayload)
   const [openForm, setOpenForm] = useState(false);
+  const [fUnidad, setFUnidad] = useState<number | "">("");
+  const [fResponsable, setFResponsable] = useState<number | "">("");
   const [fPlaca, setFPlaca] = useState("");
-  const [fTipo, setFTipo] = useState<"RESIDENTE" | "VISITANTE" | "SERVICIO">("RESIDENTE");
-  const [fVivienda, setFVivienda] = useState("");
   const [fMarca, setFMarca] = useState("");
+  const [fColor, setFColor] = useState("");
+  const [fObservacion, setFObservacion] = useState("");
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
 
+  const [q, setQ] = useState(""); // búsqueda simple por placa/marca/unidad
+
   useEffect(() => {
     let mounted = true;
-
     async function load() {
       setLoading(true);
       setError(null);
       try {
-        const data = await svc.fetchVehiculos(); // Promise<Pagination<Vehiculo>> or Vehiculo[]
-        const list: Vehiculo[] = Array.isArray((data as unknown) as Vehiculo[])
-          ? ((data as unknown) as Vehiculo[])
-          : (data?.results ?? []);
-
+        const list = await svc.fetchVehiculos();
         if (!mounted) return;
         setItems(list);
       } catch (err) {
-        // eslint-disable-next-line no-console
+ 
         console.error("fetchVehiculos error:", err);
         if (!mounted) return;
         setError(err instanceof Error ? err.message : String(err));
@@ -45,18 +41,14 @@ export default function VehiculosPage() {
         if (mounted) setLoading(false);
       }
     }
-
     load();
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
   }, []);
 
   const filtered = items.filter((v) => {
-    if (filterTipo !== "ALL" && v.tipo !== filterTipo) return false;
-    if (q && !(`${v.placa} ${v.marca ?? ""} ${v.vivienda_code ?? ""}`.toLowerCase().includes(q.toLowerCase())))
-      return false;
-    return true;
+    if (!q) return true;
+    const target = `${v.placa} ${v.marca ?? ""} ${v.unidad}`.toLowerCase();
+    return target.includes(q.toLowerCase());
   });
 
   /* Crear vehículo */
@@ -64,46 +56,53 @@ export default function VehiculosPage() {
     if (e) e.preventDefault();
     setCreateError(null);
 
+    // validaciones básicas
     if (!fPlaca.trim()) {
       setCreateError("La placa es obligatoria.");
       return;
     }
-    if (!fVivienda.trim()) {
-      setCreateError("El código de vivienda es obligatorio.");
+    if (fUnidad === "" || Number.isNaN(Number(fUnidad))) {
+      setCreateError("La unidad es obligatoria (número).");
+      return;
+    }
+    if (fResponsable === "" || Number.isNaN(Number(fResponsable))) {
+      setCreateError("El responsable es obligatorio (id numérico).");
       return;
     }
 
+    const payload: CreateVehiculoPayload = {
+      unidad: Number(fUnidad),
+      responsable: Number(fResponsable),
+      placa: fPlaca.trim(),
+      marca: fMarca.trim() || undefined,
+      color: fColor.trim() || undefined,
+      observacion: fObservacion.trim() || undefined,
+    };
+
     setCreating(true);
     try {
-      const payload: Partial<Vehiculo> = {
-        placa: fPlaca.trim(),
-        tipo: fTipo,
-        vivienda_code: fVivienda.trim(),
-        marca: fMarca.trim() || undefined,
-      };
-
-      // si tu service.createVehiculo existe lo usamos, si no emulamos
       let created: Vehiculo;
       if (typeof svc.createVehiculo === "function") {
         created = await svc.createVehiculo(payload);
       } else {
+        // fallback local (dev)
         created = {
           id: Date.now(),
-          placa: payload.placa!,
-          tipo: payload.tipo!,
-          vivienda_code: payload.vivienda_code!,
-          marca: payload.marca,
+          ...payload,
         } as Vehiculo;
       }
 
       setItems((s) => [created, ...s]);
+      // limpiar form
+      setFUnidad("");
+      setFResponsable("");
       setFPlaca("");
-      setFTipo("RESIDENTE");
-      setFVivienda("");
       setFMarca("");
+      setFColor("");
+      setFObservacion("");
       setOpenForm(false);
     } catch (err) {
-      // eslint-disable-next-line no-console
+
       console.error("createVehiculo error:", err);
       setCreateError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -122,24 +121,10 @@ export default function VehiculosPage() {
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <input
             className="search-input"
-            placeholder="Buscar por placa, marca o vivienda"
+            placeholder="Buscar por placa, marca o unidad"
             value={q}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setQ(e.target.value)}
+            onChange={(e) => setQ(e.target.value)}
           />
-
-          <select
-            value={filterTipo}
-            onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-              setFilterTipo(e.target.value as "ALL" | "RESIDENTE" | "VISITANTE" | "SERVICIO")
-            }
-            aria-label="Filtrar por tipo"
-          >
-            <option value="ALL">Todos</option>
-            <option value="RESIDENTE">Residente</option>
-            <option value="VISITANTE">Visitante</option>
-            <option value="SERVICIO">Servicio</option>
-          </select>
-
           <button className="btn" type="button" onClick={() => setOpenForm((s) => !s)}>
             {openForm ? "Cancelar" : "Nuevo vehículo"}
           </button>
@@ -152,28 +137,34 @@ export default function VehiculosPage() {
             <input
               placeholder="Placa *"
               value={fPlaca}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFPlaca(e.target.value)}
+              onChange={(e) => setFPlaca(e.target.value)}
               style={{ minWidth: 160 }}
             />
 
-            {/* aquí casteamos desde el evento del select sin usar `any` */}
-            <select
-              value={fTipo}
-              onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-                setFTipo(e.target.value as "RESIDENTE" | "VISITANTE" | "SERVICIO")
-              }
-            >
-              <option value="RESIDENTE">Residente</option>
-              <option value="VISITANTE">Visitante</option>
-              <option value="SERVICIO">Servicio</option>
-            </select>
+            <input
+              placeholder="Unidad (número) *"
+              value={fUnidad}
+              onChange={(e) => {
+                const v = e.target.value;
+                setFUnidad(v === "" ? "" : Number(v));
+              }}
+              style={{ width: 120 }}
+            />
 
             <input
-              placeholder="Código vivienda *"
-              value={fVivienda}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFVivienda(e.target.value)}
+              placeholder="Responsable (id) *"
+              value={fResponsable}
+              onChange={(e) => {
+                const v = e.target.value;
+                setFResponsable(v === "" ? "" : Number(v));
+              }}
+              style={{ width: 140 }}
             />
-            <input placeholder="Marca" value={fMarca} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFMarca(e.target.value)} />
+
+            <input placeholder="Marca" value={fMarca} onChange={(e) => setFMarca(e.target.value)} />
+            <input placeholder="Color" value={fColor} onChange={(e) => setFColor(e.target.value)} />
+            <input placeholder="Observación" value={fObservacion} onChange={(e) => setFObservacion(e.target.value)} />
+
             <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
               <button className="btn secondary" type="button" onClick={() => setOpenForm(false)}>
                 Cancelar
@@ -198,16 +189,17 @@ export default function VehiculosPage() {
             <thead>
               <tr>
                 <th style={{ textAlign: "left", padding: 8 }}>Placa</th>
-                <th style={{ textAlign: "left", padding: 8 }}>Tipo</th>
-                <th style={{ textAlign: "left", padding: 8 }}>Vivienda</th>
+                <th style={{ textAlign: "left", padding: 8 }}>Unidad</th>
+                <th style={{ textAlign: "left", padding: 8 }}>Responsable</th>
                 <th style={{ textAlign: "left", padding: 8 }}>Marca</th>
+                <th style={{ textAlign: "left", padding: 8 }}>Color</th>
               </tr>
             </thead>
 
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={4} style={{ textAlign: "center", padding: 16 }}>
+                  <td colSpan={5} style={{ textAlign: "center", padding: 16 }}>
                     No se encontraron vehículos.
                   </td>
                 </tr>
@@ -215,9 +207,10 @@ export default function VehiculosPage() {
                 filtered.map((v) => (
                   <tr key={v.id}>
                     <td style={{ padding: 8 }}>{v.placa}</td>
-                    <td style={{ padding: 8 }}>{v.tipo}</td>
-                    <td style={{ padding: 8 }}>{v.vivienda_code}</td>
-                    <td style={{ padding: 8 }}>{v.marca}</td>
+                    <td style={{ padding: 8 }}>{v.unidad}</td>
+                    <td style={{ padding: 8 }}>{v.responsable}</td>
+                    <td style={{ padding: 8 }}>{v.marca ?? "-"}</td>
+                    <td style={{ padding: 8 }}>{v.color ?? "-"}</td>
                   </tr>
                 ))
               )}

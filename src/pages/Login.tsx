@@ -20,7 +20,7 @@ export default function Login() {
     // usamos la clase .login-page que define el background en CSS
     <div className="login-page">
       {/* Tarjeta centrada — usa tu CSS (.login-card) */}
-      <div className="login-card">
+      <div className="login-card neon">
         <h1 className="login-title">CONDO SMART</h1>
 
         <form onSubmit={onSubmit} className="space-y-5" noValidate>

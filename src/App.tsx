@@ -1,9 +1,18 @@
-export default function App() {
+// App.tsx
+import React from "react";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import Login from "./pages/Login";
+import Dashboard from "./pages/Dashboard";
+
+function App(){
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-100">
-      <h1 className="text-4xl font-bold text-blue-600">
-        Frontend Condominios listo 🚀
-      </h1>
-    </div>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/login" element={<Login/>} />
+        <Route path="/*" element={<Dashboard/>} />
+      </Routes>
+    </BrowserRouter>
   );
 }
+
+export default App;
