@@ -82,6 +82,7 @@ const ContratoPage: React.FC = () => {
               type="number"
               value={newContrato.unidad}
               onChange={(e) => setNewContrato({ ...newContrato, unidad: +e.target.value })}
+               min={1}
               required
             />
           </div>

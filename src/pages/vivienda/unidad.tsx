@@ -159,6 +159,7 @@ export default function UnidadPage() {
               placeholder="Buscar por código"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+               min={1}
               className="search-input"
             />
             <select

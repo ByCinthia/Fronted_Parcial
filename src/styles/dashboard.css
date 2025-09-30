@@ -206,3 +206,27 @@
   border-radius: 8px;
   font-size: 14px;
 }
+
+/* ===== Reconocimiento facial (Acceso) ===== */
+.facecam-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+}
+
+.facecam-video {
+  width: 240px;
+  height: 180px;
+  border-radius: 12px;
+  border: 2px solid #ccc;
+  object-fit: cover;
+  transform: scaleX(-1); /* espejo */
+  background: #000;
+}
+
+.facecam-actions {
+  display: flex;
+  gap: 12px;
+}
+

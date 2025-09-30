@@ -11,6 +11,14 @@ const UnidadPage = lazy(() => import("./Vivienda/unidad"));
 const VehiculosPage = lazy(() => import("./Vivienda/vehiculos"));
 const MascotasPage = lazy(() => import("./Vivienda/mascotas"));
 const ContratoPage = lazy(() => import("./Vivienda/contrato"));
+const CargoPage = lazy(() => import("./Finanzas/cargo"));
+const PagoPage = lazy(() => import("./Finanzas/pago"));
+const AplicarPagoPage = lazy(() => import("./Finanzas/aplicarpago"));
+const AccesoPage = lazy(()=> import ("./Seguridad/acceso"));
+const VisitaPage =lazy(()=> import ("./Seguridad/visita"));
+const IncidentesPage = lazy(() => import("./Seguridad/incidente"));
+const EvidenciasPage = lazy(() => import("./Seguridad/evidencia"));
+
 /* -------------------------
    Home (bienvenida)
    ------------------------- */
@@ -96,20 +104,36 @@ export default function Dashboard() {
               }
             />
 
-           {/* Vivienda */}
-           <Route path="vivienda/unidad" element={<UnidadPage />} />
-           <Route path="vivienda/registrar-vehiculos" element={<VehiculosPage />} />
-           <Route path="vivienda/registrar-mascota" element={<MascotasPage />} />
-           <Route path="vivienda/contrato-alquiler" element={<ContratoPage />} />
+             {/* Vivienda */}
+             <Route path="vivienda/unidad" element={<UnidadPage />} />
+             <Route path="vivienda/registrar-vehiculos" element={<VehiculosPage />} />
+             <Route path="vivienda/registrar-mascota" element={<MascotasPage />} />
+             <Route path="vivienda/contrato-alquiler" element={<ContratoPage />} />
              {/* Finanzas */}
-           <Route path="finanzas/cargo" element={<div>Crear Cargo</div>} />
-           <Route path="finanzas/pago" element={<div>Crear Pago</div>} />
-           <Route path="finanzas/aplicar-pago" element={<div>Aplicar Pago a Cargo</div>} />
-
-
+             <Route  path="finanzas/cargo" element={<CargoPage />}  />
+             <Route path="finanzas/pago" element={<PagoPage />} />
+             <Route path="finanzas/aplicar-pago" element={<AplicarPagoPage />} />
+              
             {/* Seguridad */}
-            <Route path="seguridad/accesos" element={<div className="card">Control de accesos</div>} />
-        
+            <Route path="seguridad/accesos" element= {<AccesoPage />}  />
+            <Route path="seguridad/visitas" element={<VisitaPage/>} />
+            <Route path="seguridad/incidentes" element={
+             <Suspense fallback={<div>Cargando Incidentes...</div>}>
+                    <IncidentesPage />
+             </Suspense>
+             } />
+                 {/* Evidencias */}
+            <Route path="seguridad/evidencias/placa" element={<div className="card">Crear evidencia placa</div>} />
+            <Route path="seguridad/evidencias/incidente" element={<div className="card">Crear evidencia incidente</div>} />
+            <Route path="seguridad/evidencias/generar-cargo" element={<div className="card">Generar cargo por incidente</div>} />
+            <Route
+            path="seguridad/evidencias"
+            element={
+              <Suspense fallback={<div>Cargando Evidencias...</div>}>
+                   <EvidenciasPage />
+               </Suspense>
+              }  
+            />
             {/* Comunicación */}
             <Route path="comunicacion" element={<div>Mensajes</div>} />
 

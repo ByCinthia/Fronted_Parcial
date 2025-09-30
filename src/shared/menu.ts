@@ -33,22 +33,32 @@ export const MENU: MenuItem[] = [
     ],
   },
   {
-    id: "finanzas",
-    label: "Finanzas",
-    path: "finanzas/cargo",
-    children: [
-      { id: "crear-cargo", label: "Crear Cargo", path: "cargo" },
-      { id: "crear-pago", label: "Crear Pago", path: "pago" },
-      { id: "aplicar-pago", label: "Aplicar Pago a Cargo", path: "aplicar-pago" },
-    ],
-  },
+  id: "finanzas",
+  label: "Finanzas",
+  path: "finanzas",
+  roles: ["ADMIN"],
+  children: [
+    { id: "cargo", label: "Crear Cargo", path: "finanzas/cargo", roles: ["ADMIN"] },
+    { id: "pago", label: "Crear Pago", path: "finanzas/pago", roles: ["ADMIN"] },
+    { id: "aplicar-pago", label: "Aplicar Pago a Cargo", path: "finanzas/aplicar-pago", roles: ["ADMIN"] },
+  ],
+},
+
   {
     id: "seguridad",
     label: "Seguridad",
     path: "seguridad",
     roles: ["ADMIN", "GUARD"],
-    children: [{ id: "accesos", label: "Control accesos", path: "seguridad/accesos", roles: ["ADMIN", "GUARD"] }],
+    children: [
+    { id: "accesos", label: "Control accesos", path: "seguridad/accesos", roles: ["ADMIN", "GUARD"] },
+    { id: "visitas", label: "Registro visitas", path: "seguridad/visitas", roles: ["ADMIN", "GUARD"] },
+    { id: "incidentes", label: "Incidentes", path: "seguridad/incidentes", roles: ["ADMIN", "GUARD"] },
+    { id: "evidencias", label: "Evidencias", path: "seguridad/evidencias", roles: ["ADMIN", "GUARD"] },
+ 
+    ]
   },
+
+
   { id: "reportes", label: "Reportes", path: "reportes", roles: ["ADMIN"] },
   ////////////////
   {
