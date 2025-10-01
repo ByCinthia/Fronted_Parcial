@@ -30,6 +30,7 @@ export const MENU: MenuItem[] = [
       { id: "registrarVehiculos", label: "Registrar vehículos", path: "vivienda/registrar-vehiculos", roles: ["ADMIN", "GUARD"] },
       { id: "registrarMascota", label: "Registrar mascota", path: "vivienda/registrar-mascota", roles: ["ADMIN"] },
       { id: "contratoAlquiler", label: "Contrato alquiler", path: "vivienda/contrato-alquiler", roles: ["ADMIN"] },
+      { id: "condominios",  label: "Condominios",  path: "vivienda/condominios",  roles: ["ADMIN"] },
     ],
   },
   {

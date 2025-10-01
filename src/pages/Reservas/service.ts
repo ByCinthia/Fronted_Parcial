@@ -4,47 +4,44 @@ import { Area, Suministro, Reserva } from "./types";
 
 /* ----- ÁREAS ----- */
 export function crearArea(payload: Area): Promise<Area> {
-  return fetchJson<Area>("/reservas/areas/", {
+  return fetchJson<Area>("/api/v1/reservas/areas/", {
     method: "POST",
     body: JSON.stringify(payload),
-    csrf: true,
   });
 }
 
 export function listarAreas(): Promise<Area[]> {
-  return fetchJson<Area[]>("/reservas/areas/");
+  return fetchJson<Area[]>("/api/v1/reservas/areas/");
 }
 
 /* ----- SUMINISTROS ----- */
 export function crearSuministro(payload: Suministro): Promise<Suministro> {
-  return fetchJson<Suministro>("/reservas/suministros/", {
+  return fetchJson<Suministro>("/api/v1/reservas/suministros/", {
     method: "POST",
     body: JSON.stringify(payload),
-    csrf: true,
   });
 }
 
 export function listarSuministros(areaId: number): Promise<Suministro[]> {
-  return fetchJson<Suministro[]>(`/reservas/suministros/?area=${areaId}`);
+  return fetchJson<Suministro[]>(`/api/v1/reservas/suministros/?area=${areaId}`);
 }
 
 /* ----- RESERVAS ----- */
 export function crearReserva(payload: Reserva): Promise<Reserva> {
-  return fetchJson<Reserva>("/reservas/reservas/", {
+  return fetchJson<Reserva>("/api/v1/reservas/reservas/", {
     method: "POST",
     body: JSON.stringify(payload),
-    csrf: true,
   });
 }
 
 export function listarReservas(): Promise<Reserva[]> {
-  return fetchJson<Reserva[]>("/reservas/reservas/");
+  return fetchJson<Reserva[]>("/api/v1/reservas/reservas/");
 }
 
 export function cambiarEstadoReserva(id: number, estado: string): Promise<Reserva> {
-  return fetchJson<Reserva>(`/reservas/reservas/${id}/`, {
+  return fetchJson<Reserva>(`/api/v1/reservas/reservas/${id}/`, {
     method: "PATCH",
     body: JSON.stringify({ estado }),
-    csrf: true,
   });
 }
+

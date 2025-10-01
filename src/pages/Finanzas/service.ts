@@ -14,7 +14,7 @@ export function createCargo(payload: CreateCargoPayload): Promise<Cargo> {
   return fetchJson<Cargo>("/finanzas/cargos/", {
     method: "POST",
     body: JSON.stringify(payload),
-    csrf: true,
+    
   });
 }
 
@@ -23,7 +23,7 @@ export function createPago(payload: CreatePagoPayload): Promise<Pago> {
   return fetchJson<Pago>("/finanzas/pagos/", {
     method: "POST",
     body: JSON.stringify(payload),
-    csrf: true,
+    
   });
 }
 
@@ -32,7 +32,7 @@ export function aplicarPago(payload: AplicarPago): Promise<AplicarPago> {
   return fetchJson<AplicarPago>("/finanzas/aplicar-pago/", {
     method: "POST",
     body: JSON.stringify(payload),
-    csrf: true,
+    
   });
 }
 

@@ -7,7 +7,7 @@ export function crearServicio(payload: Servicio): Promise<Servicio> {
   return fetchJson<Servicio>("/mantenimiento/servicios/", {
     method: "POST",
     body: JSON.stringify(payload),
-    csrf: true,
+    
   });
 }
 
@@ -20,7 +20,7 @@ export function crearTicket(payload: Ticket): Promise<Ticket> {
   return fetchJson<Ticket>("/mantenimiento/tickets/", {
     method: "POST",
     body: JSON.stringify(payload),
-    csrf: true,
+    
   });
 }
 

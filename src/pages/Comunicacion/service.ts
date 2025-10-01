@@ -7,7 +7,7 @@ export function crearComunicado(payload: Comunicado): Promise<Comunicado> {
   return fetchJson<Comunicado>("/comunicacion/comunicados/", {
     method: "POST",
     body: JSON.stringify(payload),
-    csrf: true,
+    
   });
 }
 
@@ -37,6 +37,6 @@ export function crearNotificacion(payload: Notificacion): Promise<Notificacion> 
   return fetchJson<Notificacion>("/comunicacion/notificaciones/", {
     method: "POST",
     body: JSON.stringify(payload),
-    csrf: true,
+    
   });
 }

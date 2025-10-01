@@ -10,6 +10,8 @@ import type {
   CreateAsignacionResidenciaPayload,
   ContratoAlquiler,
   CrearContrato,
+  Condominio,
+  CreateCondominioPayload,
 } from "../Vivienda/types";
 
 const API_BASE = (import.meta.env.VITE_API_BASE as string) || "/api/v1";
@@ -202,3 +204,40 @@ export async function createContratoAlquiler(
   }
   return safeJson<ContratoAlquiler>(res);
 }
+
+
+/* ---------------- Condominios ---------------- */
+export async function fetchCondominios(): Promise<Condominio[]> {
+  const res = await fetch(`${API_BASE}/condominios/`, {
+    headers: { Accept: "application/json" },
+    credentials: "include",
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(
+      `fetchCondominios failed: ${res.status} ${res.statusText} - ${body.slice(0, 800)}`
+    );
+  }
+  const data = await safeJson<unknown>(res);
+  if (Array.isArray(data)) return data as Condominio[];
+  if (hasResultsArray(data)) return data.results as Condominio[];
+  return [];
+}
+
+export async function createCondominio(payload: CreateCondominioPayload): Promise<Condominio> {
+  const res = await fetch(`${API_BASE}/condominios/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify(payload),
+    credentials: "include",
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(
+      `createCondominio failed: ${res.status} ${res.statusText} - ${body.slice(0, 800)}`
+    );
+  }
+  return safeJson<Condominio>(res);
+}
+
+

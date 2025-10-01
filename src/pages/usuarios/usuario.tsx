@@ -1,3 +1,4 @@
+// src/pages/Usuarios/UsuarioPage.tsx
 import React, { useEffect, useState, useRef } from "react";
 import { AppUser, CreateUserPayload } from "./types";
 import {
@@ -20,19 +21,21 @@ const UsuarioPage: React.FC = () => {
     email: "",
     phone: "",
     is_active: true,
-    groups: ["admin"],
+    groups: [],
   });
-  const [photoPreview, setPhotoPreview] = useState<string>();
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const photoInputRef = useRef<HTMLInputElement | null>(null);
 
   const [mensaje, setMensaje] = useState<{ type: "error" | "success"; text: string } | null>(null);
 
+  // cargar usuarios al inicio
   useEffect(() => {
     listarUsuarios()
       .then(setUsuarios)
       .catch(() => setMensaje({ type: "error", text: "Error cargando usuarios" }));
   }, []);
 
+  // manejar cambios en los inputs normales
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
     setForm((prev) => ({
@@ -41,11 +44,29 @@ const UsuarioPage: React.FC = () => {
     }));
   };
 
+  // manejar grupos como string → string[]
+  const handleGroups = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.trim();
+    setForm((prev) => ({
+      ...prev,
+      groups: value ? value.split(",").map((g) => g.trim()) : [],
+    }));
+  };
+
+  // enviar formulario
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const nuevo = await crearUsuario(form);
+      const payload: CreateUserPayload = {
+        ...form,
+        ci: form.ci?.trim() || "",
+        groups: form.groups.length ? form.groups : ["user"], // fallback
+      };
+
+      const nuevo = await crearUsuario(payload);
       setUsuarios((prev) => [nuevo, ...prev]);
+
+      // limpiar form
       setForm({
         username: "",
         password: "",
@@ -55,16 +76,19 @@ const UsuarioPage: React.FC = () => {
         email: "",
         phone: "",
         is_active: true,
-        groups: ["admin"],
+        groups: [],
       });
-      setPhotoPreview(undefined);
+      setPhotoPreview(null);
       if (photoInputRef.current) photoInputRef.current.value = "";
       setMensaje({ type: "success", text: "Usuario creado correctamente" });
-    } catch {
-      setMensaje({ type: "error", text: "Error al crear usuario" });
+    } catch (err: unknown) {
+      let msg = "Error al crear usuario";
+      if (err instanceof Error) msg = err.message;
+      setMensaje({ type: "error", text: msg });
     }
   };
 
+  // preview de foto local
   const handlePhotoPreview = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) setPhotoPreview(URL.createObjectURL(file));
@@ -107,11 +131,24 @@ const UsuarioPage: React.FC = () => {
           </div>
           <div className="form-group">
             <label className="form-label">Correo</label>
-            <input className="form-input" name="email" value={form.email} onChange={handleChange} />
+            <input className="form-input" type="email" name="email" value={form.email} onChange={handleChange} />
           </div>
           <div className="form-group">
             <label className="form-label">Teléfono</label>
             <input className="form-input" name="phone" value={form.phone} onChange={handleChange} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">CI</label>
+            <input className="form-input" name="ci" value={form.ci || ""} onChange={handleChange} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Grupos</label>
+            <input
+              className="form-input"
+              placeholder="ej: admin,user"
+              value={form.groups.join(",")}
+              onChange={handleGroups}
+            />
           </div>
           <div className="form-group">
             <label className="form-label">Activo</label>
@@ -159,8 +196,11 @@ const UsuarioPage: React.FC = () => {
                   <input
                     type="checkbox"
                     checked={u.is_active}
-                    onChange={() => actualizarUsuario(u.id, { is_active: !u.is_active })
-                      .then((upd) => setUsuarios((prev) => prev.map((x) => (x.id === u.id ? upd : x))))}
+                    onChange={() =>
+                      actualizarUsuario(u.id, { is_active: !u.is_active })
+                        .then((upd) => setUsuarios((prev) => prev.map((x) => (x.id === u.id ? upd : x))))
+                        .catch(() => setMensaje({ type: "error", text: "Error al actualizar estado" }))
+                    }
                   />
                 </td>
                 <td>
@@ -173,12 +213,23 @@ const UsuarioPage: React.FC = () => {
                       onChange={async (e) => {
                         const file = e.target.files?.[0];
                         if (!file) return;
-                        const upd = await actualizarFoto(u.id, file);
-                        setUsuarios((prev) => prev.map((x) => (x.id === u.id ? upd : x)));
+                        try {
+                          const upd = await actualizarFoto(u.id, file);
+                          setUsuarios((prev) => prev.map((x) => (x.id === u.id ? upd : x)));
+                        } catch {
+                          setMensaje({ type: "error", text: "Error al actualizar foto" });
+                        }
                       }}
                     />
                   </label>
-                  <button className="btn secondary" onClick={() => eliminarUsuario(u.id).then(() => setUsuarios((prev) => prev.filter((x) => x.id !== u.id)))}>
+                  <button
+                    className="btn secondary"
+                    onClick={() =>
+                      eliminarUsuario(u.id)
+                        .then(() => setUsuarios((prev) => prev.filter((x) => x.id !== u.id)))
+                        .catch(() => setMensaje({ type: "error", text: "Error al eliminar usuario" }))
+                    }
+                  >
                     Eliminar
                   </button>
                 </td>

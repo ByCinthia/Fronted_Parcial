@@ -18,16 +18,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   async function signIn(u: string, p: string) {
     setLoading(true);
     try {
-      // 1) pedir tokens
-      const tokens = await fetchJson<{ access: string; refresh: string }>("/api/v1/token/", {
-        method: "POST",
-        body: JSON.stringify({ username: u, password: p }),
-      });
-
-      // 2) guardar tokens
-      localStorage.setItem("access", tokens.access);
-      localStorage.setItem("refresh", tokens.refresh);
-
+       const data = await fetchJson<{
+      access: string;
+      refresh: string;
+    }>("/api/v1/token/", {
+      method: "POST",
+      body: JSON.stringify({ username: u, password: p }),
+    });
+        // Guardar tokens
+    localStorage.setItem("access", data.access);
+    localStorage.setItem("refresh", data.refresh);
       // 3) pedir info del usuario actual
       const me = await fetchJson<{ id: number; username: string }>("/api/v1/me/");
       setUser(me);

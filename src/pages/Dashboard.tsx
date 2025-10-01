@@ -11,6 +11,8 @@ const UnidadPage = lazy(() => import("./Vivienda/unidad"));
 const VehiculosPage = lazy(() => import("./Vivienda/vehiculos"));
 const MascotasPage = lazy(() => import("./Vivienda/mascotas"));
 const ContratoPage = lazy(() => import("./Vivienda/contrato"));
+import CondominioPage from "./Vivienda/condominio";
+
 const CargoPage = lazy(() => import("./Finanzas/cargo"));
 const PagoPage = lazy(() => import("./Finanzas/pago"));
 const AplicarPagoPage = lazy(() => import("./Finanzas/aplicarpago"));
@@ -116,6 +118,8 @@ export default function Dashboard() {
              <Route path="vivienda/registrar-vehiculos" element={<VehiculosPage />} />
              <Route path="vivienda/registrar-mascota" element={<MascotasPage />} />
              <Route path="vivienda/contrato-alquiler" element={<ContratoPage />} />
+            <Route path="vivienda/condominios" element={<CondominioPage />} />
+
              {/* Finanzas */}
              <Route  path="finanzas/cargo" element={<CargoPage />}  />
              <Route path="finanzas/pago" element={<PagoPage />} />

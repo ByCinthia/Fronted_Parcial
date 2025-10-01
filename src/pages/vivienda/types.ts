@@ -146,5 +146,20 @@ export interface CrearContrato {
   descripcion: string;
 }
 
+/* -------------------------
+   Condominios
+------------------------- */
+export interface Condominio {
+  id: number;
+  direccion: string;
+  name: string;
+  tipo: "vertical" | "horizontal";
+}
+
+export interface CreateCondominioPayload {
+  direccion: string;
+  name: string;
+  tipo: "vertical" | "horizontal";
+}
 
 
