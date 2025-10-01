@@ -11,7 +11,7 @@ import { fetchJson } from "../../shared/api";
 
 // Crear un cargo
 export function createCargo(payload: CreateCargoPayload): Promise<Cargo> {
-  return fetchJson<Cargo>("/finanzas/cargos/", {
+  return fetchJson<Cargo>("/api/v1/cargos/", {
     method: "POST",
     body: JSON.stringify(payload),
     
@@ -20,7 +20,7 @@ export function createCargo(payload: CreateCargoPayload): Promise<Cargo> {
 
 // Crear un pago
 export function createPago(payload: CreatePagoPayload): Promise<Pago> {
-  return fetchJson<Pago>("/finanzas/pagos/", {
+  return fetchJson<Pago>("/api/v1/pagos/", {
     method: "POST",
     body: JSON.stringify(payload),
     

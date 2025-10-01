@@ -4,7 +4,7 @@ import { Servicio, Ticket } from "./types";
 
 /* ----- SERVICIOS ----- */
 export function crearServicio(payload: Servicio): Promise<Servicio> {
-  return fetchJson<Servicio>("/mantenimiento/servicios/", {
+  return fetchJson<Servicio>("/api/v1/servicios/", {
     method: "POST",
     body: JSON.stringify(payload),
     
@@ -17,7 +17,7 @@ export function listarServicios(): Promise<Servicio[]> {
 
 /* ----- TICKETS ----- */
 export function crearTicket(payload: Ticket): Promise<Ticket> {
-  return fetchJson<Ticket>("/mantenimiento/tickets/", {
+  return fetchJson<Ticket>("/api/v1/tickets/", {
     method: "POST",
     body: JSON.stringify(payload),
     
