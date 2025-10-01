@@ -42,6 +42,7 @@ const NotificacionPage: React.FC = () => {
           placeholder="ID Usuario destinatario"
           required
         />
+        
         <select name="tipo" value={form.tipo} onChange={handleChange}>
           <option value="evento">Evento</option>
           <option value="alerta">Alerta</option>

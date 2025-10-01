@@ -18,6 +18,13 @@ const AccesoPage = lazy(()=> import ("./Seguridad/acceso"));
 const VisitaPage =lazy(()=> import ("./Seguridad/visita"));
 const IncidentesPage = lazy(() => import("./Seguridad/incidente"));
 const EvidenciasPage = lazy(() => import("./Seguridad/evidencia"));
+const ComunicadoPage = lazy(() => import("./Comunicacion/comunicado"));
+const NotificacionPage = lazy(() => import("./Comunicacion/notificacion"));
+const AreaPage = lazy(() => import("./Reservas/area"));
+const SuministroPage = lazy(() => import("./Reservas/suministro"));
+const ReservaPage = lazy(() => import("./Reservas/reserva"));
+import ServicioPage from "./Mantenimiento/servicio";
+import TicketPage from "./Mantenimiento/ticket";
 
 /* -------------------------
    Home (bienvenida)
@@ -135,17 +142,30 @@ export default function Dashboard() {
               }  
             />
             {/* Comunicación */}
-            <Route path="comunicacion" element={<div>Mensajes</div>} />
+             <Route
+               path="comunicacion/comunicados" element={
+             <Suspense fallback={<div>Cargando Comunicados...</div>}>
+               <ComunicadoPage />
+             </Suspense> } 
+            />
+            <Route
+             path="comunicacion/notificaciones" element={
+              <Suspense fallback={<div>Cargando Notificaciones...</div>}>
+                <NotificacionPage />
+              </Suspense> }
+           />
+
 
             {/* Reservaciones */}
-            <Route path="reservaciones" element={<div>Crear Reservación</div>} />
+
+             <Route path="reservas/areas" element={<AreaPage />} />
+             <Route path="reservas/suministros" element={<SuministroPage />} />
+             <Route path="reservas/list" element={<ReservaPage />} />
 
             {/* Mantenimiento */}
-            <Route path="mantenimiento" element={<div>Gestión de Mantenimiento</div>} />
-
-           {/* Reportes */}
-           <Route path="reportes" element={<div>Generar Reportes</div>} />
-
+           <Route path="mantenimiento/servicios" element={<ServicioPage />} />
+           <Route path="mantenimiento/tickets" element={<TicketPage />} />
+          
            {/* Reconocimiento Facial */}
           <Route path="reconocimiento-facial" element={<div>Reconocimiento Facial</div>} />
            </Route>

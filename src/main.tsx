@@ -6,15 +6,20 @@ import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom"
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import { AuthProvider } from "./shared/auth";
+import ProtectedRoute from "./shared/Protected";
 
 const router = createBrowserRouter([
   { path: "/", element: <Navigate to="/login" replace /> },
   { path: "/login", element: <Login /> },
 
-  // Montamos Dashboard (que ya contiene sus Routes internas/lazy)
-  { path: "/app/*", element: <Dashboard /> },
+  {
+    path: "/app/*",
+    element: <ProtectedRoute />, // se protege
+    children: [
+      { path: "*", element: <Dashboard /> }, // aquí va tu dashboard
+    ],
+  },
 
-  // fallback
   { path: "*", element: <Navigate to="/login" replace /> },
 ]);
 

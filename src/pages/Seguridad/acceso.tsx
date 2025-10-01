@@ -110,7 +110,7 @@ const AccesoPage: React.FC = () => {
             <option value="in">Entrada</option>
             <option value="out">Salida</option>
           </select>
-          <label style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <label style={{ display: "flex", alignItems: "center", gap: "20px" }}>
             <input
               type="checkbox"
               name="permitido"
@@ -130,7 +130,7 @@ const AccesoPage: React.FC = () => {
     <button onClick={startCamera} className="btn">Abrir Cámara</button>
   ) : (
     <div className="facecam-container">
-      <video ref={videoRef} autoPlay playsInline muted className="facecam-video" />
+      <video ref={videoRef} autoPlay playsInline className="facecam-video" />
       <div className="facecam-actions">
         <button onClick={captureAndRecognize} className="btn">Capturar</button>
         <button onClick={stopCamera} className="btn ghost">Cerrar</button>

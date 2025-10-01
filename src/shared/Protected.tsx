@@ -1,13 +1,15 @@
-// src/shared/Protected.tsx
-import { Outlet, Navigate } from "react-router-dom";
+// src/shared/ProtectedRoute.tsx
+import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "./auth";
 
-export default function Protected() {
-  const { user } = useAuth();
+export default function ProtectedRoute() {
+  const { user, loading } = useAuth();
+
+  if (loading) return <div>Cargando...</div>;
 
   if (!user) {
     return <Navigate to="/login" replace />;
   }
 
-  return <Outlet />;
+  return <Outlet />; // deja pasar a las rutas hijas
 }

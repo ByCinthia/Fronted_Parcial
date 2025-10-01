@@ -58,29 +58,41 @@ export const MENU: MenuItem[] = [
     ]
   },
 
-
-  { id: "reportes", label: "Reportes", path: "reportes", roles: ["ADMIN"] },
-  ////////////////
   {
     id: "comunicacion",
     label: "Comunicación",
     path: "comunicacion",
+    roles: ["ADMIN", "GUARD"], // los que pueden usarlo
+    children: [
+     { id: "comunicados", label: "Comunicados", path: "comunicacion/comunicados", roles: ["ADMIN"] },
+     { id: "notificaciones", label: "Notificaciones", path: "comunicacion/notificaciones", roles: ["GUARD"] },
+    ],
   },
+
   {
-    id: "reservaciones",
-    label: "Reservaciones",
-    path: "reservaciones",
-  },
+  id: "reservas",
+  label: "Reservas",
+  path: "reservas",
+  roles: ["ADMIN", "GUARD", "RESIDENT"], // puedes ajustar según permisos
+  children: [
+    { id: "areas", label: "Áreas Comunes", path: "reservas/areas", roles: ["ADMIN"] },
+    { id: "suministros", label: "Suministros", path: "reservas/suministros", roles: ["ADMIN"] },
+    { id: "reservas", label: "Reservas", path: "reservas/list", roles: ["ADMIN", "GUARD", "RESIDENT"] },
+  ],
+},
+
   {
-    id: "mantenimiento",
-    label: "Mantenimiento",
-    path: "mantenimiento",
-  },
-  {
-    id: "reportes",
-    label: "Reportes",
-    path: "reportes",
-  },
+  id: "mantenimiento",
+  label: "Mantenimiento",
+  path: "mantenimiento",
+  roles: ["ADMIN", "GUARD"],
+  children: [
+    { id: "servicios", label: "Servicios", path: "mantenimiento/servicios", roles: ["ADMIN"] },
+    { id: "tickets", label: "Tickets", path: "mantenimiento/tickets", roles: ["ADMIN", "GUARD"] },
+  ],
+},
+
+  
   {
     id: "reconocimiento-facial",
     label: "Reconocimiento Facial",
