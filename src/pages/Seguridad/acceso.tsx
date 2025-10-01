@@ -13,7 +13,6 @@ type AccesoRow = {
   foto_url?: string;
 };
 
-// ---------- helpers sin any ----------
 function pickNumber(o: AnyObj, keys: readonly string[]): number | null {
   for (const k of keys) {
     const v = o[k];
@@ -43,17 +42,13 @@ function coerceUnidadId(x: unknown): number {
   }
   return 0;
 }
-
 function coerceAcceso(x: unknown): AccesoRow | null {
   if (typeof x !== "object" || x === null) return null;
   const o = x as AnyObj;
-
   const unidad = coerceUnidadId(o["unidad"]);
   if (unidad <= 0) return null;
-
   const sentidoRaw = pickString(o, ["sentido", "direction"])?.toLowerCase();
   const permitidoBool = pickBoolean(o, ["permitido", "allowed", "is_allowed"]);
-
   return {
     unidad,
     sentido: sentidoRaw === "out" ? "out" : "in",
@@ -62,11 +57,8 @@ function coerceAcceso(x: unknown): AccesoRow | null {
     foto_url: pickString(o, ["foto_url", "image_url", "photo_url", "snapshot"]) ?? undefined,
   };
 }
-
 function normalizeAccesos(data: unknown): AccesoRow[] {
-  if (Array.isArray(data)) {
-    return data.map(coerceAcceso).filter((x): x is AccesoRow => x !== null);
-  }
+  if (Array.isArray(data)) return data.map(coerceAcceso).filter((x): x is AccesoRow => x !== null);
   if (typeof data === "object" && data !== null) {
     const o = data as AnyObj;
     const arr: unknown[] =
@@ -81,14 +73,7 @@ function normalizeAccesos(data: unknown): AccesoRow[] {
   }
   return [];
 }
-
-type ReconResp = {
-  match?: boolean;
-  unidad?: number;
-  confianza?: number;
-  mensaje?: string;
-};
-
+type ReconResp = { match?: boolean; unidad?: number; confianza?: number; mensaje?: string };
 function coerceReconResp(x: unknown): ReconResp {
   if (typeof x !== "object" || x === null) return {};
   const o = x as AnyObj;
@@ -100,25 +85,22 @@ function coerceReconResp(x: unknown): ReconResp {
 }
 
 const AccesoPage: React.FC = () => {
-  // formulario base
-  const [form, setForm] = useState<Acceso>({
-    unidad: 0,
-    sentido: "in",
-    permitido: true,
-  });
-
-  // listado normalizado
+  const [form, setForm] = useState<Acceso>({ unidad: 0, sentido: "in", permitido: true });
   const [accesos, setAccesos] = useState<AccesoRow[]>([]);
   const [cargandoLista, setCargandoLista] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
-  // cámara / snapshot
   const videoRef = useRef<HTMLVideoElement>(null);
   const [videoOn, setVideoOn] = useState(false);
   const [stream, setStream] = useState<MediaStream | null>(null);
-  const [snapshot, setSnapshot] = useState<string | null>(null); // dataURL JPEG
+  const [snapshot, setSnapshot] = useState<string | null>(null);
+  const [camError, setCamError] = useState<string | null>(null);
 
-  // cargar lista al montar
+  // cámaras disponibles
+  type Cam = { deviceId: string; label: string };
+  const [cams, setCams] = useState<Cam[]>([]);
+  const [selectedCam, setSelectedCam] = useState<string>("");
+
   useEffect(() => {
     (async () => {
       setCargandoLista(true);
@@ -160,26 +142,69 @@ const AccesoPage: React.FC = () => {
     }
   };
 
-  // Activar cámara (intenta trasera cuando exista)
+  // === Soporte y permisos ===
+  function isSupported(): boolean {
+    return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+  }
+  function isSecure(): boolean {
+    // HTTPS o localhost
+    return window.isSecureContext || location.hostname === "localhost";
+  }
+
+  async function listCameras(): Promise<Cam[]> {
+    // para obtener labels, algunos navegadores requieren permiso previo
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const cams = devices
+      .filter((d) => d.kind === "videoinput")
+      .map((d) => ({ deviceId: d.deviceId, label: d.label || "Cámara" }));
+    return cams;
+  }
+
   const startCamera = async () => {
+    setCamError(null);
+    if (!isSupported()) {
+      setCamError("Tu navegador no soporta getUserMedia.");
+      return;
+    }
+    if (!isSecure()) {
+      setCamError(
+        "La cámara requiere HTTPS o localhost. Abre el front en https:// o en http://localhost."
+      );
+      return;
+    }
     try {
-      const constraints: MediaStreamConstraints = {
-        video: { facingMode: { ideal: "environment" } },
-        audio: false,
-      };
+      // si ya tenemos una seleccionada, intenta con ella
+      const constraints: MediaStreamConstraints =
+        selectedCam
+          ? { video: { deviceId: { exact: selectedCam } }, audio: false }
+          : { video: { facingMode: { ideal: "environment" } }, audio: false };
+
       const newStream = await navigator.mediaDevices.getUserMedia(constraints);
+
       if (videoRef.current) {
         videoRef.current.srcObject = newStream;
+        // iOS necesita playsInline + gesture; ya usamos botón
         await videoRef.current.play().catch(() => {});
       }
       setStream(newStream);
       setVideoOn(true);
       setSnapshot(null);
+
+      // listar cámaras (ahora con labels si se concedió permiso)
+      const found = await listCameras();
+      setCams(found);
+      if (!selectedCam && found.length > 0) setSelectedCam(found[0].deviceId);
     } catch (e) {
-      // usamos la variable en el log para evitar warning y ayudar al debug
-      // eslint-disable-next-line no-console
-      console.error(e);
-      alert("No se pudo acceder a la cámara");
+      // error detallado por tipo
+      let reason = "No se pudo acceder a la cámara.";
+      if (e instanceof DOMException) {
+        if (e.name === "NotAllowedError") reason = "Permiso de cámara denegado.";
+        else if (e.name === "NotFoundError") reason = "No se encontró ninguna cámara.";
+        else if (e.name === "NotReadableError") reason = "La cámara está ocupada por otra aplicación.";
+        else if (e.name === "OverconstrainedError") reason = "La cámara seleccionada no está disponible.";
+        else if (e.name === "SecurityError") reason = "Contexto inseguro: usa HTTPS o localhost.";
+      }
+      setCamError(reason);
     }
   };
 
@@ -191,14 +216,12 @@ const AccesoPage: React.FC = () => {
     setVideoOn(false);
   };
 
-  // detener cámara al desmontar
   useEffect(() => {
     return () => {
       if (stream) stream.getTracks().forEach((t) => t.stop());
     };
   }, [stream]);
 
-  // Capturar foto
   const capturePhoto = () => {
     const video = videoRef.current;
     if (!video) return;
@@ -216,10 +239,8 @@ const AccesoPage: React.FC = () => {
     setSnapshot(dataUrl);
   };
 
-  // Capturar + reconocer
   const captureAndRecognize = async () => {
     capturePhoto();
-    // da un respiro para que snapshot se setee
     setTimeout(async () => {
       const current = snapshot;
       if (!current && videoRef.current) {
@@ -291,13 +312,32 @@ const AccesoPage: React.FC = () => {
           </label>
           <button type="submit" className="btn">Registrar</button>
         </form>
-
         {msg && <div style={{ marginBlockStart: 8 }}>{msg}</div>}
       </div>
 
-      {/* Reconocimiento facial */}
+      {/* Reconocimiento facial / cámara */}
       <div className="module-card">
         <h2>Reconocimiento Facial</h2>
+
+        {/* selector de cámara si hay varias */}
+        {cams.length > 0 && (
+          <div className="form-group" style={{ marginBlockEnd: 8 }}>
+            <label className="form-label">Cámara</label>
+            <select
+              className="form-input"
+              value={selectedCam}
+              onChange={(e) => setSelectedCam(e.target.value)}
+              disabled={videoOn}
+              title={videoOn ? "Detén la cámara para cambiar" : ""}
+            >
+              {cams.map((c) => (
+                <option key={c.deviceId} value={c.deviceId}>
+                  {c.label || "Cámara"}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {!videoOn ? (
           <button onClick={startCamera} className="btn">Abrir Cámara</button>
@@ -308,7 +348,6 @@ const AccesoPage: React.FC = () => {
               autoPlay
               playsInline
               className="facecam-video"
-              // reemplazo width/maxWidth por inlineSize/maxInlineSize
               style={{ inlineSize: "100%", maxInlineSize: 480, borderRadius: 8 }}
             />
             <div className="facecam-actions" style={{ display: "flex", gap: 8 }}>
@@ -316,18 +355,22 @@ const AccesoPage: React.FC = () => {
               <button onClick={capturePhoto} className="btn">Solo capturar</button>
               <button onClick={stopCamera} className="btn ghost">Cerrar cámara</button>
             </div>
-
             {snapshot && (
               <div style={{ marginBlockStart: 8 }}>
                 <p style={{ marginBlockEnd: 6 }}>Foto capturada:</p>
                 <img
                   src={snapshot}
                   alt="snapshot"
-                  // reemplazo maxWidth por maxInlineSize
                   style={{ maxInlineSize: 240, borderRadius: 8, display: "block" }}
                 />
               </div>
             )}
+          </div>
+        )}
+
+        {camError && (
+          <div style={{ color: "#c62828", marginBlockStart: 8, fontWeight: 600 }}>
+            {camError}
           </div>
         )}
       </div>
