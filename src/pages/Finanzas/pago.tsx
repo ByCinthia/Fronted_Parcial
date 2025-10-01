@@ -1,122 +1,76 @@
-// src/pages/Finanzas/pago.tsx
-import React, { useState } from "react";
+// src/pages/Finanzas/PagoPage.tsx
+import React, { useState, useEffect } from "react";
 import { CreatePagoPayload, Pago } from "./types";
-import { createPago, listarPagos } from "./service";
+import { createPago, listarPagos, confirmarPago, marcarPagoFallido } from "./service";
 
 const PagoPage: React.FC = () => {
-  // estado para crear pago
   const [newPago, setNewPago] = useState<CreatePagoPayload>({
     user: 0,
-    unidad: 0,
     fecha: "",
-    monto_total: "",
     metodo: "efectivo",
-    estado: "pendiente",
-    referencia: "",
+    observacion: "",
   });
-
-  // estado para listar pagos
   const [pagos, setPagos] = useState<Pago[]>([]);
 
-  const handleCreatePago = async (e: React.FormEvent) => {
+  useEffect(() => {
+    listarPagos().then(setPagos).catch(console.error);
+  }, []);
+
+  const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       await createPago(newPago);
-      alert("Pago creado correctamente");
-      setNewPago({
-        user: 0,
-        unidad: 0,
-        fecha: "",
-        monto_total: "",
-        metodo: "efectivo",
-        estado: "pendiente",
-        referencia: "",
-      });
-    } catch (error) {
-      alert("Error al crear el pago");
-      console.error(error);
+      const lista = await listarPagos();
+      setPagos(lista);
+      setNewPago({ user: 0, fecha: "", metodo: "efectivo", observacion: "" });
+    } catch (err) {
+      alert("Error al crear pago");
+      console.error(err);
     }
   };
 
-  const handleBuscar = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const form = e.currentTarget;
-    const unidad = Number((form.elements.namedItem("unidad") as HTMLInputElement).value);
-    const desde = (form.elements.namedItem("desde") as HTMLInputElement).value;
-    const hasta = (form.elements.namedItem("hasta") as HTMLInputElement).value;
-    const data = await listarPagos(unidad, desde, hasta);
-    setPagos(data);
+  const handleConfirmar = async (id: number) => {
+    await confirmarPago(id);
+    const lista = await listarPagos();
+    setPagos(lista);
+  };
+
+  const handleFallido = async (id: number) => {
+    await marcarPagoFallido(id);
+    const lista = await listarPagos();
+    setPagos(lista);
   };
 
   return (
     <div className="module-container">
-      {/* Crear Pago */}
       <div className="module-card">
         <h2>Crear Pago</h2>
-        <form className="module-form" onSubmit={handleCreatePago}>
-          <input
-            type="number"
-            placeholder="Usuario"
-            value={newPago.user}
-            onChange={(e) => setNewPago({ ...newPago, user: +e.target.value })}
-            min={1}
-            required
-          />
-          <input
-            type="number"
-            placeholder="Unidad"
-            value={newPago.unidad}
-            onChange={(e) => setNewPago({ ...newPago, unidad: +e.target.value })}
-            min={1}
-            required
-          />
-          <input
-            type="date"
-            placeholder="Fecha"
-            value={newPago.fecha}
-            onChange={(e) => setNewPago({ ...newPago, fecha: e.target.value })}
-            required
-          />
-          <input
-            type="text"
-            placeholder="Monto Total"
-            value={newPago.monto_total}
-            onChange={(e) => setNewPago({ ...newPago, monto_total: e.target.value })}
-            required
-          />
-          <input
-            type="text"
-            placeholder="Referencia"
-            value={newPago.referencia}
-            onChange={(e) => setNewPago({ ...newPago, referencia: e.target.value })}
-            required
-          />
-          <button type="submit" className="btn">Crear Pago</button>
+        <form className="module-form" onSubmit={handleCreate}>
+          <input type="number" placeholder="Usuario" value={newPago.user}
+            onChange={(e) => setNewPago({ ...newPago, user: +e.target.value })} required />
+          <input type="date" value={newPago.fecha}
+            onChange={(e) => setNewPago({ ...newPago, fecha: e.target.value })} required />
+          <select value={newPago.metodo}
+            onChange={(e) => setNewPago({ ...newPago, metodo: e.target.value as CreatePagoPayload["metodo"] })}>
+            <option value="efectivo">Efectivo</option>
+            <option value="tarjeta">Tarjeta</option>
+            <option value="transferencia">Transferencia</option>
+            <option value="otro">Otro</option>
+          </select>
+          <textarea placeholder="Observación" value={newPago.observacion}
+            onChange={(e) => setNewPago({ ...newPago, observacion: e.target.value })} />
+          <button className="btn">Crear</button>
         </form>
       </div>
 
-      {/* Listar Pagos */}
       <div className="module-card">
-        <h2>Pagos por Unidad y Fechas</h2>
-        <form className="module-form" onSubmit={handleBuscar}>
-          <input type="number" name="unidad" placeholder="Unidad" min={1} required />
-          <input type="date" name="desde" />
-          <input type="date" name="hasta" />
-          <button type="submit" className="btn">Buscar</button>
-        </form>
-
+        <h2>Listado de Pagos</h2>
         {pagos.length > 0 && (
           <table className="table">
             <thead>
               <tr>
-                <th>ID</th>
-                <th>Usuario</th>
-                <th>Unidad</th>
-                <th>Fecha</th>
-                <th>Monto Total</th>
-                <th>Método</th>
-                <th>Estado</th>
-                <th>Referencia</th>
+                <th>ID</th><th>Usuario</th><th>Fecha</th><th>Monto Total</th>
+                <th>Método</th><th>Estado</th><th>Observación</th><th>Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -124,12 +78,19 @@ const PagoPage: React.FC = () => {
                 <tr key={p.id}>
                   <td>{p.id}</td>
                   <td>{p.user}</td>
-                  <td>{p.unidad}</td>
                   <td>{p.fecha}</td>
                   <td>{p.monto_total}</td>
                   <td>{p.metodo}</td>
                   <td>{p.estado}</td>
-                  <td>{p.referencia}</td>
+                  <td>{p.observacion ?? "-"}</td>
+                  <td>
+                    {p.estado === "pendiente" && (
+                      <>
+                        <button className="btn" onClick={() => handleConfirmar(p.id)}>Confirmar</button>
+                        <button className="btn secondary" onClick={() => handleFallido(p.id)}>Fallido</button>
+                      </>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>

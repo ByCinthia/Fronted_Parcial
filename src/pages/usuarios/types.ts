@@ -1,16 +1,16 @@
 export interface AppUser {
   id: number;
   username: string;
-  password?: string; 
-  ci?: string;
   first_name?: string;
   last_name?: string;
   email?: string;
+  ci?: string;
   phone?: string;
   is_active: boolean;
   groups: string[];
-  photo?: string; // url o base64
+  photo_url?: string; // el backend la devuelve
 }
+
 
 export interface CreateUserPayload {
   username: string;

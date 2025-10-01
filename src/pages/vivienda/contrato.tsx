@@ -1,177 +1,212 @@
-import React, { useState, useEffect } from "react";
-import { ContratoAlquiler, CrearContrato } from "./types"; 
-import { createContratoAlquiler } from "./service"; // Importamos la función del servicio
+// src/pages/Vivienda/Contrato.tsx
+import React, { useEffect, useState } from "react";
+import { Contrato, CreateContratoPayload, Unidad } from "./types";
+import { createContrato, generarCargoContrato, generarCargosMes, fetchUnidades } from "./service";
+import { fetchJson } from "../../shared/api";
+import "../../styles/dashboard.css";
+
+type User = { id: number; username: string };
 
 const ContratoPage: React.FC = () => {
-  const [contratos, setContratos] = useState<ContratoAlquiler[]>([]);
-  const [newContrato, setNewContrato] = useState<CrearContrato>({
+  const [contratos, setContratos] = useState<Contrato[]>([]);
+  const [unidades, setUnidades] = useState<Unidad[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [creating, setCreating] = useState(false);
+
+  const [form, setForm] = useState<CreateContratoPayload>({
     unidad: 0,
-    dueño: 0, 
-    inquilino: 0,
-    start: "",
-    monto_mensual: "",
-    is_active: true,
+    duenno: null,
+    inquilino: null,
     descripcion: "",
+    start: "",
+    end: "",
+    monto_mensual: "",
   });
 
-  // Cargar los contratos existentes desde el backend (simulado)
-  useEffect(() => {
-    const loadContratos = async () => {
-      const contratosData = [
-        {
-          id: 1, 
-          unidad: 1,
-          inquilino: 2,
-          fecha_inicio: "2025-03-01",
-          monto_mensual: "350.00",
-          garantia: "500.00",
-          activo: true,
-        },
-      ];
-      setContratos(contratosData);
-    };
+  const [periodoMes, setPeriodoMes] = useState<string>(""); // para generar cargos del mes (type="month")
 
-    loadContratos();
+  async function loadAll() {
+    setLoading(true);
+    setMsg(null);
+    try {
+      const [c, u, us] = await Promise.all([
+        // listado directo (no lo pusimos en service.ts)
+        fetchJson<Contrato[] | { results: Contrato[] }>("/api/v1/contratos/"),
+        fetchUnidades(),
+        fetchJson<User[] | { results: User[] }>("/api/v1/users/"),
+      ]);
+      setContratos(Array.isArray(c) ? c : c.results);
+      setUnidades(u);
+      setUsers(Array.isArray(us) ? us : us.results);
+    } catch (e: unknown) {
+      setMsg(e instanceof Error ? e.message : "Error cargando");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void loadAll();
   }, []);
 
-  // Manejador para la creación de un nuevo contrato
-  const handleCreateContrato = async (e: React.FormEvent) => {
+  const onChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setForm((s) => ({
+      ...s,
+      [name]:
+        name === "unidad" || name === "duenno" || name === "inquilino"
+          ? (value ? Number(value) : null)
+          : value,
+    }));
+  };
+
+  const isValid = Number(form.unidad) > 0 && !!form.start;
+
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Llamamos a la función del servicio para crear el contrato
+    if (!isValid || creating) return;
+    setCreating(true);
+    setMsg(null);
     try {
-      const createdContrato = await createContratoAlquiler({
-        unidad: newContrato.unidad,
-        dueño: newContrato.dueño,
-        inquilino: newContrato.inquilino,
-        start: newContrato.start,
-        monto_mensual: newContrato.monto_mensual,
-        is_active: newContrato.is_active,
-        descripcion: newContrato.descripcion,
-      });
+      const payload: CreateContratoPayload = {
+        unidad: Number(form.unidad),
+        duenno: form.duenno ? Number(form.duenno) : null,
+        inquilino: form.inquilino ? Number(form.inquilino) : null,
+        start: form.start,
+        end: form.end || null,
+        monto_mensual: form.monto_mensual ? String(form.monto_mensual) : undefined,
+        descripcion: form.descripcion?.trim() || "",
+      };
+      const nuevo = await createContrato(payload);
+      setContratos((prev) => [nuevo, ...prev]);
+      setForm({ unidad: 0, duenno: null, inquilino: null, start: "", end: "", descripcion: "", monto_mensual: "" });
+      setMsg("Contrato creado");
+    } catch (e: unknown) {
+      setMsg(e instanceof Error ? e.message : "Error al crear");
+    } finally {
+      setCreating(false);
+    }
+  };
 
-      // Actualizar el estado con el nuevo contrato creado
-      setContratos((prev) => [...prev, createdContrato]);
+  const genCargo = async (id: number, yyyymm: string) => {
+    // yyyymm del input month => periodo "YYYY-MM-01"
+    if (!yyyymm) return setMsg("Selecciona un mes");
+    const periodo = `${yyyymm}-01`;
+    try {
+      const r = await generarCargoContrato(id, periodo);
+      setMsg(r.ok ? `Cargo generado (contrato ${id})` : "Ya existía para ese periodo");
+    } catch (e: unknown) {
+      setMsg(e instanceof Error ? e.message : "Error al generar cargo");
+    }
+  };
 
-      // Limpiar el formulario después de la creación
-      setNewContrato({
-        unidad: 0,
-        dueño: 0,
-        inquilino: 0,
-        start: "",
-        monto_mensual: "",
-        is_active: true,
-        descripcion: "",
-      });
-    } catch (error) {
-      console.error("Error al crear el contrato:", error);
+  const genCargosMes = async (yyyymm: string) => {
+    if (!yyyymm) return setMsg("Selecciona un mes");
+    const periodo = `${yyyymm}-01`;
+    try {
+      const r = await generarCargosMes(periodo);
+      setMsg(r.ok ? `Cargos del mes generados` : "Sin cambios");
+    } catch (e: unknown) {
+      setMsg(e instanceof Error ? e.message : "Error al generar cargos");
     }
   };
 
   return (
     <div className="module-container">
       <div className="module-card">
-        <h2>Contratos de Alquiler</h2>
+        <h2>Crear Contrato</h2>
+        <form className="module-form" onSubmit={onSubmit} noValidate>
+          <div className="form-group">
+            <label className="form-label">Unidad *</label>
+            <select className="form-input" name="unidad" value={form.unidad || 0} onChange={onChange}>
+              <option value={0}>-- Selecciona --</option>
+              {unidades.map((u) => (
+                <option key={u.id} value={u.id}>{u.code}</option>
+              ))}
+            </select>
+          </div>
 
-        {/* Formulario para Crear Contrato */}
-        <form onSubmit={handleCreateContrato} className="module-form">
-          <h3>Crear Nuevo Contrato</h3>
-          <div>
-            <label>Unidad:</label>
-            <input
-              type="number"
-              value={newContrato.unidad}
-              onChange={(e) => setNewContrato({ ...newContrato, unidad: +e.target.value })}
-               min={1}
-              required
-            />
+          <div className="form-group">
+            <label className="form-label">Dueño</label>
+            <select className="form-input" name="duenno" value={form.duenno ?? ""} onChange={onChange}>
+              <option value="">-- (opcional) --</option>
+              {users.map((u) => <option key={u.id} value={u.id}>{u.username}</option>)}
+            </select>
           </div>
-          <div>
-            <label>Dueño:</label>
-            <input
-              type="number"
-              value={newContrato.dueño}
-              onChange={(e) => setNewContrato({ ...newContrato, dueño: +e.target.value })}
-              required
-            />
+
+          <div className="form-group">
+            <label className="form-label">Inquilino</label>
+            <select className="form-input" name="inquilino" value={form.inquilino ?? ""} onChange={onChange}>
+              <option value="">-- (opcional) --</option>
+              {users.map((u) => <option key={u.id} value={u.id}>{u.username}</option>)}
+            </select>
           </div>
-          <div>
-            <label>Inquilino:</label>
-            <input
-              type="number"
-              value={newContrato.inquilino}
-              onChange={(e) => setNewContrato({ ...newContrato, inquilino: +e.target.value })}
-              required
-            />
+
+          <div className="form-group"><label className="form-label">Inicio *</label>
+            <input className="form-input" type="date" name="start" value={form.start} onChange={onChange} />
           </div>
-          <div>
-            <label>Fecha de Inicio:</label>
-            <input
-              type="date"
-              value={newContrato.start}
-              onChange={(e) => setNewContrato({ ...newContrato, start: e.target.value })}
-              required
-            />
+          <div className="form-group"><label className="form-label">Fin</label>
+            <input className="form-input" type="date" name="end" value={form.end || ""} onChange={onChange} />
           </div>
-          <div>
-            <label>Monto Mensual:</label>
-            <input
-              type="text"
-              value={newContrato.monto_mensual}
-              onChange={(e) => setNewContrato({ ...newContrato, monto_mensual: e.target.value })}
-              required
-            />
+          <div className="form-group"><label className="form-label">Monto mensual</label>
+            <input className="form-input" name="monto_mensual" value={form.monto_mensual || ""} onChange={onChange} />
           </div>
-          <div>
-            <label>Descripción:</label>
-            <input
-              type="text"
-              value={newContrato.descripcion}
-              onChange={(e) => setNewContrato({ ...newContrato, descripcion: e.target.value })}
-              required
-            />
+          <div className="form-group"><label className="form-label">Descripción</label>
+            <textarea className="form-input" name="descripcion" value={form.descripcion || ""} onChange={onChange} />
           </div>
-          <div>
-            <label>Activo:</label>
-            <input
-              type="checkbox"
-              checked={newContrato.is_active}
-              onChange={(e) => setNewContrato({ ...newContrato, is_active: e.target.checked })}
-            />
-          </div>
-          <button type="submit" className="btn">
-            Crear Contrato
+
+          <button className="btn" type="submit" disabled={!isValid || creating}>
+            {creating ? "Creando..." : "Crear"}
           </button>
         </form>
+        {msg && <div style={{ marginTop: 8 }}>{msg}</div>}
       </div>
 
-      {/* Listado de Contratos Existentes */}
       <div className="module-card">
-        <h3>Contratos Actuales</h3>
-        <table className="table">
-          <thead>
-            <tr>
-              <th>Unidad</th>
-              <th>Inquilino</th>
-              <th>Fecha Inicio</th>
-              <th>Monto Mensual</th>
-              <th>Garantía</th>
-              <th>Activo</th>
-            </tr>
-          </thead>
-          <tbody>
-            {contratos.map((contrato, index) => (
-              <tr key={index}>
-                <td>{contrato.unidad}</td>
-                <td>{contrato.inquilino}</td>
-                <td>{contrato.fecha_inicio}</td>
-                <td>{contrato.monto_mensual}</td>
-                <td>{contrato.garantia}</td>
-                <td>{contrato.activo ? "Sí" : "No"}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="module-card-header" style={{ display: "flex", justifyContent: "space-between" }}>
+          <h2>Contratos</h2>
+          <div style={{ display: "flex", gap: 8 }}>
+            <input
+              className="form-input"
+              type="month"
+              value={periodoMes}
+              onChange={(e) => setPeriodoMes(e.target.value)}
+              aria-label="Mes para generar cargos"
+            />
+            <button className="btn" onClick={() => void genCargosMes(periodoMes)}>Generar cargos del mes</button>
+          </div>
+        </div>
+
+        {loading && contratos.length === 0 ? (
+          <p>Cargando...</p>
+        ) : contratos.length === 0 ? (
+          <p>No hay registros.</p>
+        ) : (
+          <table className="table">
+            <thead>
+              <tr><th>ID</th><th>Unidad</th><th>Dueño</th><th>Inquilino</th><th>Inicio</th><th>Monto</th><th>Acción</th></tr>
+            </thead>
+            <tbody>
+              {contratos.map((c) => (
+                <tr key={c.id}>
+                  <td>{c.id}</td>
+                  <td>{c.unidad}</td>
+                  <td>{c.duenno ?? "-"}</td>
+                  <td>{c.inquilino ?? "-"}</td>
+                  <td>{c.start}</td>
+                  <td>{c.monto_mensual ?? "-"}</td>
+                  <td>
+                    <button className="btn" onClick={() => void genCargo(c.id, periodoMes)} disabled={!periodoMes}>
+                      Generar cargo
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );

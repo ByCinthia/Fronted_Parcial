@@ -18,19 +18,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   async function signIn(u: string, p: string) {
     setLoading(true);
     try {
-       const data = await fetchJson<{
-      access: string;
-      refresh: string;
-    }>("/api/v1/token/", {
-      method: "POST",
-      body: JSON.stringify({ username: u, password: p }),
-    });
-        // Guardar tokens
-    localStorage.setItem("access", data.access);
-    localStorage.setItem("refresh", data.refresh);
-      // 3) pedir info del usuario actual
+      // 👇 Backend espera username/password
+      const data = await fetchJson<{ access: string; refresh: string }>(
+        "/api/v1/token/",
+        { method: "POST", body: JSON.stringify({ username: u, password: p }) }
+      );
+
+      localStorage.setItem("access", data.access);
+      localStorage.setItem("refresh", data.refresh);
+
       const me = await fetchJson<{ id: number; username: string }>("/api/v1/me/");
       setUser(me);
+    } catch (err: unknown) {
+      let msg = "Error al iniciar sesión";
+      if (err instanceof Error && err.message) msg = err.message;
+      alert(msg);
+      setUser(null);
+      throw err;
     } finally {
       setLoading(false);
     }

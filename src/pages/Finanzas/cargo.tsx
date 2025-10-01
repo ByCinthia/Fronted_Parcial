@@ -1,135 +1,83 @@
-// src/pages/Finanzas/cargo.tsx
+// src/pages/Finanzas/AplicarPagoPage.tsx
 import React, { useState } from "react";
-import { CreateCargoPayload, Cargo } from "./types";
-import { createCargo, listarCargos } from "./service";
+import { AplicarPago } from "./types";
+import { aplicarPago, verAplicacionesPago } from "./service";
+import { QRCodeCanvas } from "qrcode.react";
 
-const CargoPage: React.FC = () => {
-  // estado para crear cargo
-  const [newCargo, setNewCargo] = useState<CreateCargoPayload>({
-    unidad: 0,
-    concepto: "",
-    descripcion: "",
-    monto: "",
-    periodo: "",
-    estado: "pendiente",
-    saldo: "",
-  });
+const AplicarPagoPage: React.FC = () => {
+  const [form, setForm] = useState<AplicarPago>({ pago: 0, cargo: 0, monto: "" });
+  const [aplicaciones, setAplicaciones] = useState<AplicarPago[]>([]);
+  const [ultimo, setUltimo] = useState<AplicarPago | null>(null);
 
-  // estado para listar cargos
-  const [cargos, setCargos] = useState<Cargo[]>([]);
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setForm((prev) => ({
+      ...prev,
+      [name]: name === "pago" || name === "cargo" ? Number(value) : value,
+    }));
+  };
 
-  const handleCreateCargo = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await createCargo(newCargo);
-      alert("Cargo creado correctamente");
-      setNewCargo({
-        unidad: 0,
-        concepto: "",
-        descripcion: "",
-        monto: "",
-        periodo: "",
-        estado: "pendiente",
-        saldo: "",
-      });
-    } catch (error) {
-      alert("Error al crear el cargo");
-      console.error(error);
+      const result = await aplicarPago(form);
+      setUltimo(result);
+      alert("Pago aplicado correctamente");
+    } catch {
+      alert("Error al aplicar pago");
     }
   };
 
-  const handleBuscar = async (e: React.FormEvent<HTMLFormElement>) => {
-  e.preventDefault();
-  const form = e.currentTarget; // ya es un HTMLFormElement
-  const unidad = Number((form.elements.namedItem("unidad") as HTMLInputElement).value);
-  const estado = (form.elements.namedItem("estado") as HTMLInputElement).value;
-  const data = await listarCargos(unidad, estado);
-  setCargos(data);
-};
-
-
   return (
     <div className="module-container">
-      {/* Crear Cargo */}
       <div className="module-card">
-        <h2>Crear Cargo</h2>
-        <form className="module-form" onSubmit={handleCreateCargo}>
-          <input
-            type="number"
-            placeholder="Unidad"
-            value={newCargo.unidad}
-            onChange={(e) => setNewCargo({ ...newCargo, unidad: +e.target.value })}
-            min={1}
-            required
-          />
-          <input
-            type="text"
-            placeholder="Concepto"
-            value={newCargo.concepto}
-            onChange={(e) => setNewCargo({ ...newCargo, concepto: e.target.value })}
-            required
-          />
-          <input
-            type="text"
-            placeholder="Descripción"
-            value={newCargo.descripcion}
-            onChange={(e) => setNewCargo({ ...newCargo, descripcion: e.target.value })}
-            required
-          />
-          <input
-            type="text"
-            placeholder="Monto"
-            value={newCargo.monto}
-            onChange={(e) => setNewCargo({ ...newCargo, monto: e.target.value })}
-            required
-          />
-          <input
-            type="date"
-            placeholder="Periodo"
-            value={newCargo.periodo}
-            onChange={(e) => setNewCargo({ ...newCargo, periodo: e.target.value })}
-            required
-          />
-          <button type="submit" className="btn">Crear Cargo</button>
+        <h2>Aplicar Pago a Cargo</h2>
+        <form className="module-form" onSubmit={handleSubmit}>
+          <input type="number" name="pago" placeholder="Pago ID"
+            value={form.pago} onChange={handleChange} min={1} required />
+          <input type="number" name="cargo" placeholder="Cargo ID"
+            value={form.cargo} onChange={handleChange} min={1} required />
+          <input type="text" name="monto" placeholder="Ej: 100.00"
+            value={form.monto} onChange={handleChange} required />
+          <button className="btn">Aplicar</button>
         </form>
+
+        {ultimo && (
+          <div style={{ marginTop: 20 }}>
+            <h3>QR del Comprobante</h3>
+            <QRCodeCanvas value={JSON.stringify(ultimo)} size={200} includeMargin />
+            <p>Pago {ultimo.pago} aplicado a cargo {ultimo.cargo} por ${ultimo.monto}</p>
+          </div>
+        )}
       </div>
 
-      {/* Listar Cargos */}
       <div className="module-card">
-        <h2>Cargos por Unidad</h2>
-        <form className="module-form" onSubmit={handleBuscar}>
-          <input type="number" name="unidad" placeholder="Unidad" min={1} required />
-          <input type="text" name="estado" placeholder="Estado (pendiente, pagado...)" />
-          <button type="submit" className="btn">Buscar</button>
+        <h2>Ver Aplicaciones de Pago</h2>
+        <form className="module-form"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            const pagoId = Number(
+              (e.currentTarget.elements.namedItem("pago") as HTMLInputElement).value
+            );
+            const data = await verAplicacionesPago(pagoId);
+            setAplicaciones(data);
+          }}
+        >
+          <input type="number" name="pago" placeholder="Pago ID" min={1} required />
+          <button className="btn">Buscar</button>
         </form>
 
-        {cargos.length > 0 && (
+        {aplicaciones.length > 0 && (
           <table className="table">
             <thead>
-              <tr>
-                <th>ID</th>
-                <th>Unidad</th>
-                <th>Concepto</th>
-                <th>Descripción</th>
-                <th>Monto</th>
-                <th>Periodo</th>
-                <th>Estado</th>
-                <th>Saldo</th>
-                <th>Creado por</th>
-              </tr>
+              <tr><th>Pago</th><th>Cargo</th><th>Monto</th></tr>
             </thead>
             <tbody>
-              {cargos.map((c) => (
-                <tr key={c.id}>
-                  <td>{c.id}</td>
-                  <td>{c.unidad}</td>
-                  <td>{c.concepto}</td>
-                  <td>{c.descripcion}</td>
-                  <td>{c.monto}</td>
-                  <td>{c.periodo}</td>
-                  <td>{c.estado}</td>
-                  <td>{c.saldo}</td>
-                  <td>{c.creado_por ?? "-"}</td>
+              {aplicaciones.map((a, i) => (
+                <tr key={i}>
+                  <td>{a.pago}</td>
+                  <td>{a.cargo}</td>
+                  <td>{a.monto}</td>
                 </tr>
               ))}
             </tbody>
@@ -140,4 +88,4 @@ const CargoPage: React.FC = () => {
   );
 };
 
-export default CargoPage;
+export default AplicarPagoPage;

@@ -17,8 +17,7 @@ export const MENU: MenuItem[] = [
     roles: ["ADMIN", "GUARD"],
     children: [
       { id: "crearUsuario", label: "Crear usuario", path: "usuarios/crear", roles: ["ADMIN"] },
-      { id: "verUsuarios", label: "Ver usuarios", path: "usuarios/list", roles: ["ADMIN"] },
-    ],
+       ],
   },
   {
     id: "vivienda",
@@ -90,6 +89,19 @@ export const MENU: MenuItem[] = [
   children: [
     { id: "servicios", label: "Servicios", path: "mantenimiento/servicios", roles: ["ADMIN"] },
     { id: "tickets", label: "Tickets", path: "mantenimiento/tickets", roles: ["ADMIN", "GUARD"] },
+  ],
+},
+
+{
+  id: "reportes",
+  label: "Reportes",
+  path: "reportes",
+  roles: ["ADMIN"], // Solo admin puede ver reportes
+  children: [
+    { id: "finanzas-reporte", label: "Reporte Finanzas", path: "reportes/finanzas", roles: ["ADMIN"] },
+    { id: "usuarios-reporte", label: "Reporte Usuarios", path: "reportes/usuarios", roles: ["ADMIN"] },
+   
+    
   ],
 },
 

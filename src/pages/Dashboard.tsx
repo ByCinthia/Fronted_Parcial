@@ -27,6 +27,10 @@ const SuministroPage = lazy(() => import("./Reservas/suministro"));
 const ReservaPage = lazy(() => import("./Reservas/reserva"));
 import ServicioPage from "./Mantenimiento/servicio";
 import TicketPage from "./Mantenimiento/ticket";
+// Reportes
+const ReporteFinanzasPage = lazy(() => import("./Reportes/ReporteFinanzas"));
+const ReporteUsuariosPage = lazy(() => import("./Reportes/ReporteUsuarios"));
+//const ReporteGeneralPage = lazy(() => import("./Reportes/ReporteGeneral"));
 
 /* -------------------------
    Home (bienvenida)
@@ -72,9 +76,9 @@ export default function Dashboard() {
           else onToggle();
         }}
       >
-        ☰
+        
       </button>
-      <div className="title">Panel</div>
+      
     </div>
     <div className="right">
       <input className="search-input" placeholder="Buscar..." />
@@ -170,6 +174,26 @@ export default function Dashboard() {
            <Route path="mantenimiento/servicios" element={<ServicioPage />} />
            <Route path="mantenimiento/tickets" element={<TicketPage />} />
           
+          {/* Reportes */}
+<Route
+  path="reportes/finanzas"
+  element={
+    <Suspense fallback={<div>Cargando Reporte Finanzas...</div>}>
+      <ReporteFinanzasPage />
+    </Suspense>
+  }
+/>
+
+<Route
+  path="reportes/usuarios"
+  element={
+    <Suspense fallback={<div>Cargando Reporte Usuarios...</div>}>
+      <ReporteUsuariosPage />
+    </Suspense>
+  }
+/>
+
+
            {/* Reconocimiento Facial */}
           <Route path="reconocimiento-facial" element={<div>Reconocimiento Facial</div>} />
            </Route>

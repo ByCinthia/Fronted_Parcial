@@ -1,79 +1,63 @@
-// src/pages/Finanzas/service.ts
-import type {
-  Cargo,
-  CreateCargoPayload,
-  Pago,
-  CreatePagoPayload,
-  AplicarPago,
-} from "./types";
-
+import type { Cargo, CreateCargoPayload, Pago, CreatePagoPayload, AplicarPago } from "./types";
 import { fetchJson } from "../../shared/api";
 
-// Crear un cargo
+/* -------------------------
+   Cargos
+------------------------- */
 export function createCargo(payload: CreateCargoPayload): Promise<Cargo> {
   return fetchJson<Cargo>("/api/v1/cargos/", {
     method: "POST",
     body: JSON.stringify(payload),
-    
   });
 }
 
-// Crear un pago
+export function listarCargos(unidad?: number, estado?: string): Promise<Cargo[]> {
+  const params = new URLSearchParams();
+  if (unidad) params.append("unidad", String(unidad));
+  if (estado) params.append("estado", estado);
+  return fetchJson<Cargo[]>(`/api/v1/cargos/?${params.toString()}`);
+}
+
+export function anularCargo(id: number): Promise<Cargo> {
+  return fetchJson<Cargo>(`/api/v1/cargos/${id}/anular/`, { method: "POST" });
+}
+
+/* -------------------------
+   Pagos
+------------------------- */
 export function createPago(payload: CreatePagoPayload): Promise<Pago> {
   return fetchJson<Pago>("/api/v1/pagos/", {
     method: "POST",
     body: JSON.stringify(payload),
-    
   });
 }
 
-// Aplicar pago a un cargo
+export function listarPagos(unidad?: number, desde?: string, hasta?: string): Promise<Pago[]> {
+  const params = new URLSearchParams();
+  if (unidad) params.append("unidad", String(unidad));
+  if (desde) params.append("fecha__gte", desde);
+  if (hasta) params.append("fecha__lte", hasta);
+  return fetchJson<Pago[]>(`/api/v1/pagos/?${params.toString()}`);
+}
+
+export function confirmarPago(id: number): Promise<Pago> {
+  return fetchJson<Pago>(`/api/v1/pagos/${id}/confirmar/`, { method: "POST" });
+}
+
+export function marcarPagoFallido(id: number): Promise<Pago> {
+  return fetchJson<Pago>(`/api/v1/pagos/${id}/fallido/`, { method: "POST" });
+}
+
+/* -------------------------
+   PagoCargo
+------------------------- */
 export function aplicarPago(payload: AplicarPago): Promise<AplicarPago> {
-  return fetchJson<AplicarPago>("/finanzas/aplicar-pago/", {
+  return fetchJson<AplicarPago>("/api/v1/pagocargo/", {
     method: "POST",
     body: JSON.stringify(payload),
-    
   });
 }
 
-// Listar cargos por unidad y estado
-export function listarCargos(
-  unidad: number,
-  estado?: string,
-  ordering?: string
-): Promise<Cargo[]> {
-  const params = new URLSearchParams();
-  params.append("unidad", String(unidad));
-  if (estado) params.append("estado", estado);
-  if (ordering) params.append("ordering", ordering);
-
-  return fetchJson<Cargo[]>(`/finanzas/cargos/?${params.toString()}`);
-}
-
-// Listar pagos por unidad y rango de fechas
-export function listarPagos(
-  unidad: number,
-  fecha_gte?: string,
-  fecha_lte?: string,
-  ordering?: string
-): Promise<Pago[]> {
-  const params = new URLSearchParams();
-  params.append("unidad", String(unidad));
-  if (fecha_gte) params.append("fecha__gte", fecha_gte);
-  if (fecha_lte) params.append("fecha__lte", fecha_lte);
-  if (ordering) params.append("ordering", ordering);
-
-  return fetchJson<Pago[]>(`/finanzas/pagos/?${params.toString()}`);
-}
-
-// Ver aplicaciones de pago por pago
-export function verAplicacionesPago(
-  pagoId: number,
-  ordering?: string
-): Promise<AplicarPago[]> {
-  const params = new URLSearchParams();
-  params.append("pago", String(pagoId));
-  if (ordering) params.append("ordering", ordering);
-
-  return fetchJson<AplicarPago[]>(`/finanzas/aplicaciones/?${params.toString()}`);
+export function verAplicacionesPago(pagoId: number): Promise<AplicarPago[]> {
+  return fetchJson<AplicarPago[]>(`/api/v1/pagocargo/?pago=${pagoId}`);
 }

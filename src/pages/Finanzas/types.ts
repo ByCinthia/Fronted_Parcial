@@ -2,26 +2,23 @@
    Cargos
 ------------------------- */
 export interface Cargo {
-  id?: number;
+  id: number;
   unidad: number;
-  concepto: string;
-  descripcion: string;
+  concepto: "cuota" | "multa" | "deposito" | "otro";
+  descripcion?: string;
   monto: string;
   periodo: string;
-  estado: "pendiente" | "pagado"; // Puede estar pendiente o pagado
+  estado: "pendiente" | "parcial" | "pagado" | "anulado";
   saldo: string;
-  
-  creado_por?: string; // opcional: solo visible si la API lo manda
+  creado_por?: string;
 }
 
 export interface CreateCargoPayload {
   unidad: number;
-  concepto: string;
-  descripcion: string;
+  concepto?: "cuota" | "multa" | "deposito" | "otro";
+  descripcion?: string;
   monto: string;
   periodo: string;
-  estado: "pendiente";
-  saldo: string;
 }
 
 /* -------------------------
@@ -30,32 +27,28 @@ export interface CreateCargoPayload {
 export interface Pago {
   id: number;
   user: number;
-  unidad: number;
   fecha: string;
-  monto_total: string;
-  metodo: "efectivo" | "tarjeta" | "transferencia"; // Métodos de pago posibles
-  estado: "confirmado" | "pendiente"; // Puede estar confirmado o pendiente
-  referencia: string;
+  metodo: "efectivo" | "tarjeta" | "transferencia" | "otro";
+  estado: "pendiente" | "confirmado" | "fallido";
+  observacion?: string;
+  comprobante_key?: string | null;
+  monto_total: string; // calculado por backend
 }
 
 export interface CreatePagoPayload {
   user: number;
-  unidad: number;
   fecha: string;
-  monto_total: string;
-  metodo: "efectivo" | "tarjeta" | "transferencia";
-  estado: "pendiente" | "confirmado";   // 👈 ahora acepta ambos
-  referencia: string;
+  metodo: "efectivo" | "tarjeta" | "transferencia" | "otro";
+  estado?: "pendiente" | "confirmado";
+  observacion?: string;
 }
 
 /* -------------------------
    Aplicar Pago a Cargo
 ------------------------- */
-
 export interface AplicarPago {
-  pago: number; // ID del pago
-  cargo: number; // ID del cargo
-  monto: string; // ejemplo "80.00"
+  id?: number;
+  pago: number;
+  cargo: number;
+  monto: string;
 }
-
-

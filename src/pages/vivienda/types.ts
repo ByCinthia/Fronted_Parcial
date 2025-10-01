@@ -1,5 +1,4 @@
-// src/pages/vivienda/types.ts
-
+// src/pages/Vivienda/types.ts
 export type Pagination<T> = {
   results: T[];
   count: number;
@@ -7,159 +6,124 @@ export type Pagination<T> = {
   previous?: string | null;
 };
 
-/* -------------------------
-   Copropietarios
-------------------------- */
-export type Copropietario = {
-  id: number;
-  full_name: string;
-  email?: string;
-  vivienda_code?: string; // p.e. "A-101"
-  role: "TITULAR" | "AUTORIZADO";
-  phone?: string;
-  created_at?: string;
-};
-
-/* -------------------------
-   Unidades
-------------------------- */
-export interface Unidad {
-  id: number;
-  code: string;       // ej: "A-101"
-  is_active: boolean;
-  created_at?: string;
-}
-
-export interface CreateUnidadPayload {
-  code: string;
-  is_active: boolean;
-}
-
-/* -------------------------
-   Asignar residencia
-------------------------- */
-export interface AsignacionResidencia {
-  id: number;
-  user: number;           // id del usuario
-  unidad: number;         // id de la unidad
-  is_owner: boolean;
-  tipo_ocupacion: "propietario" | "inquilino" | "otro";
-  status: "activa" | "inactiva";
-  start: string;          // fecha inicio ISO
-}
-
-export interface CreateAsignacionResidenciaPayload {
-  user: number;
-  unidad: number;
-  is_owner: boolean;
-  tipo_ocupacion: "propietario" | "inquilino" | "otro";
-  status: "activa" | "inactiva";
-  start: string;
-}
-
-/* -------------------------
-   Vehículos
-------------------------- */
-export type ResponsableId = number;
-
-export interface Vehiculo {
-  id: number;
-  unidad: number;             // id de la unidad
-  responsable: ResponsableId; // id usuario
-  placa: string;
-  marca?: string;
-  color?: string;
-  observacion?: string;
-  created_at?: string;
-}
-
-export interface CreateVehiculoPayload {
-  unidad: number;
-  responsable: number;
-  placa: string;
-  marca?: string;
-  color?: string;
-  observacion?: string;
-}
-
-/** Payload para actualizar vehículo */
-export interface UpdateVehiculoPayload {
-  unidad?: number;
-  responsable?: number;
-  placa?: string;
-  marca?: string;
-  color?: string;
-  observacion?: string;
-}
-
-/* -------------------------
-   Mascotas
-------------------------- */
-export interface Mascota {
-  id: number;
-  unidad: number;
-  responsable: number;
-  nombre: string;
-  tipo: string;             // perro | gato | etc
-  raza?: string;
-  activo: boolean;
-  desde: string;            // fecha ISO
-  created_at?: string;
-}
-
-export interface CreateMascotaPayload {
-  unidad: number;
-  responsable: number;
-  nombre: string;
-  tipo: string;
-  raza?: string;
-  activo: boolean;
-  desde: string;
-}
-
-/* -------------------------
-   Contrato de alquiler
-------------------------- */
-
-export interface ContratoAlquiler{
-  id: number;
-  unidad: number;
-  inquilino: number;
-  fecha_inicio: string;
-  monto_mensual: string;
-  garantia: string;
-  activo: boolean;
-}
-
-
-/* -------------------------
-   Contrato general (dueño - inquilino)
-------------------------- */
-export interface CrearContrato {
-  id?: number; // Hacer que "id" sea opcional
-  unidad: number;
-  dueño: number;
-  inquilino: number;
-  start: string;
-  monto_mensual: string;
-  is_active: boolean;
-  descripcion: string;
-}
-
-/* -------------------------
-   Condominios
-------------------------- */
+/* -------- Condominios -------- */
 export interface Condominio {
   id: number;
   direccion: string;
   name: string;
   tipo: "vertical" | "horizontal";
+  is_active?: boolean;
 }
-
 export interface CreateCondominioPayload {
   direccion: string;
   name: string;
   tipo: "vertical" | "horizontal";
 }
 
+/* -------- Unidades -------- */
+export interface Unidad {
+  id: number;
+  condominio: number;          // FK condominio
+  direccion: string;           // calle / referencia
+  code: string;                // ej: "A-101"
+  user?: number | null;        // dueño (opcional)
+  piso?: number | null;        // solo vertical
+  manzano?: string | null;     // solo horizontal
+  is_active?: boolean;
+  // conveniente para UI:
+  tipo?: "vertical" | "horizontal"; // se hereda del condominio (read-only)
+}
+export interface CreateUnidadPayload {
+  condominio: number;
+  direccion: string;
+  code: string;
+  user?: number | null;
+  piso?: number | null;
+  manzano?: string | null;
+}
 
+/* -------- Residencias (Residency) -------- */
+export interface AsignacionResidencia {
+  id: number;
+  user: number;
+  unidad: number;
+  tipo_ocupacion: "propietario" | "residente";
+  status: "activa" | "inactiva";
+  is_owner: boolean;
+  start: string;               // YYYY-MM-DD
+  end?: string | null;
+  is_active?: boolean;
+}
+export interface CreateAsignacionResidenciaPayload {
+  user: number;
+  unidad: number;
+  tipo_ocupacion: "propietario" | "residente";
+  status: "activa" | "inactiva";
+  is_owner: boolean;
+  start: string;
+  end?: string | null;
+}
+
+/* -------- Vehículos -------- */
+export interface Vehiculo {
+  id: number;
+  unidad: number;
+  responsable?: number | null;
+  placa: string;
+  marca?: string;
+  color?: string;
+  observacion?: string;
+  is_active?: boolean;
+}
+export interface CreateVehiculoPayload {
+  unidad: number;
+  responsable?: number | null;
+  placa: string;
+  marca?: string;
+  color?: string;
+  observacion?: string;
+}
+export type UpdateVehiculoPayload = Partial<CreateVehiculoPayload>;
+
+/* -------- Mascotas -------- */
+export interface Mascota {
+  id: number;
+  name: string;
+  tipo: string;                // perro/gato/...
+  raza?: string;
+  desde?: string | null;       // YYYY-MM-DD
+  hasta?: string | null;       // YYYY-MM-DD
+  responsable?: number | null;
+  is_active?: boolean;
+}
+export interface CreateMascotaPayload {
+  name: string;
+  tipo: string;
+  raza?: string;
+  desde?: string | null;
+  hasta?: string | null;
+  responsable?: number | null;
+}
+
+/* -------- Contratos -------- */
+export interface Contrato {
+  id: number;
+  unidad: number;
+  duenno?: number | null;      // ojo: "duenno"
+  inquilino?: number | null;
+  descripcion?: string;
+  start: string;               // YYYY-MM-DD
+  end?: string | null;
+  documento?: string;          // URL del archivo si el API lo devuelve así
+  monto_mensual?: string;      // Decimal en string
+  is_active?: boolean;
+}
+export interface CreateContratoPayload {
+  unidad: number;
+  duenno?: number | null;
+  inquilino?: number | null;
+  descripcion?: string;
+  start: string;
+  end?: string | null;
+  monto_mensual?: string;
+}

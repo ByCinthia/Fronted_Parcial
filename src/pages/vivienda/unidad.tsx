@@ -1,308 +1,305 @@
-// src/pages/vivienda/unidad.tsx
-import React, { useEffect, useState } from "react";
-import type {
-  Unidad,
-  CreateUnidadPayload,
-  AsignacionResidencia,
-  CreateAsignacionResidenciaPayload,
-} from "./types";
-import * as svc from "./service";
+import React, { useEffect, useMemo, useState } from "react";
+import { Unidad, CreateUnidadPayload, Condominio } from "./types";
+import { createUnidad } from "./service";
+import { fetchJson } from "../../shared/api";
+import "../../styles/dashboard.css";
 
-export default function UnidadPage() {
-  const [items, setItems] = useState<Unidad[]>([]);
-  const [residencias, setResidencias] = useState<AsignacionResidencia[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+type AnyObj = Record<string, unknown>;
+const CONDOS_CACHE = "condominios_cache_v1";
+const UNITS_CACHE = "unidades_cache_v1";
 
-  // filtros y orden
-  const [search, setSearch] = useState("");
-  const [orderBy, setOrderBy] = useState<"codigo" | "estado" | "asignado">("codigo");
+/* -------------------- cache helpers -------------------- */
+function readCache<T>(key: string): T[] {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as unknown;
+    return Array.isArray(parsed) ? (parsed as T[]) : [];
+  } catch {
+    return [];
+  }
+}
+function writeCache<T>(key: string, items: T[]): void {
+  try { localStorage.setItem(key, JSON.stringify(items)); } catch { /* no-op */ }
+}
+function mergeById<T extends { id: number }>(a: T[], b: T[]): T[] {
+  const m = new Map<number, T>();
+  for (const x of [...a, ...b]) m.set(x.id, x);
+  return Array.from(m.values());
+}
+/* ------------------------------------------------------ */
 
-  // form crear unidad
-  const [openUnidadForm, setOpenUnidadForm] = useState(false);
-  const [fCode, setFCode] = useState("");
-  const [fActive, setFActive] = useState(true);
-  const [creatingUnidad, setCreatingUnidad] = useState(false);
-  const [unidadError, setUnidadError] = useState<string | null>(null);
-
-  // form asignar residencia
-  const [openResForm, setOpenResForm] = useState(false);
-  const [fUser, setFUser] = useState<number | "">("");
-  const [fUnidadId, setFUnidadId] = useState<number | "">("");
-  const [fOwner, setFOwner] = useState(false);
-  const [fTipoOcup, setFTipoOcup] = useState<"propietario" | "inquilino" | "otro">("propietario");
-  const [fStatus, setFStatus] = useState<"activa" | "inactiva">("activa");
-  const [fStart, setFStart] = useState("");
-  const [creatingRes, setCreatingRes] = useState(false);
-  const [resError, setResError] = useState<string | null>(null);
-
-  // cargar datos
-  useEffect(() => {
-    let mounted = true;
-    async function load() {
-      setLoading(true);
-      setError(null);
-      try {
-        const list = await svc.fetchUnidades();
-        if (mounted) setItems(list);
-
-        if (typeof svc.fetchResidencias === "function") {
-          const listRes: AsignacionResidencia[] = await svc.fetchResidencias();
-          if (mounted) setResidencias(listRes);
-        }
-      } catch (err) {
-        if (mounted) {
-          setError(err instanceof Error ? err.message : String(err));
-          setItems([]);
-          setResidencias([]);
-        }
-      } finally {
-        if (mounted) setLoading(false);
-      }
+/* ---- normalizador de condominios (mismo que en Condominio.tsx) ---- */
+function toVH(value: string): "vertical" | "horizontal" {
+  const v = value.toLowerCase();
+  if (v === "vertical" || v === "departamento") return "vertical";
+  if (v === "horizontal" || v === "casa") return "horizontal";
+  return "vertical";
+}
+function pickString(o: AnyObj, keys: readonly string[]): string | null {
+  for (const k of keys) {
+    const v = o[k];
+    if (typeof v === "string" && v.trim() !== "") return v;
+  }
+  return null;
+}
+function pickNumber(o: AnyObj, keys: readonly string[]): number | null {
+  for (const k of keys) {
+    const v = o[k];
+    if (typeof v === "number" && Number.isFinite(v)) return v;
+  }
+  return null;
+}
+function coerceCondominio(x: unknown): Condominio | null {
+  if (typeof x !== "object" || x === null) return null;
+  const o = x as AnyObj;
+  const id = pickNumber(o, ["id", "pk"]);
+  if (id === null) return null;
+  const name = pickString(o, ["name", "nombre", "title"]) ?? `Condominio ${id}`;
+  const direccion = pickString(o, ["direccion", "address", "dir", "ubicacion"]) ?? "";
+  const rawTipo = pickString(o, ["tipo", "tipo_display", "type", "kind"]) ?? "vertical";
+  return { id, name, direccion, tipo: toVH(rawTipo) };
+}
+function normalizeCondominios(data: unknown): Condominio[] {
+  if (Array.isArray(data)) {
+    return data.map(coerceCondominio).filter((x): x is Condominio => x !== null);
+  }
+  if (typeof data === "object" && data !== null) {
+    const o = data as AnyObj;
+    const candidates: unknown[] =
+      Array.isArray(o["results"])
+        ? (o["results"] as unknown[])
+        : Array.isArray(o["data"])
+        ? (o["data"] as unknown[])
+        : Array.isArray(o["items"])
+        ? (o["items"] as unknown[])
+        : [];
+    if (candidates.length) {
+      return candidates.map(coerceCondominio).filter((x): x is Condominio => x !== null);
     }
-    load();
-    return () => {
-      mounted = false;
-    };
+  }
+  return [];
+}
+/* ------------------------------------------------------------------- */
+
+/* --------------------- normalizador de unidades --------------------- */
+function coerceUnidad(x: unknown): Unidad | null {
+  if (typeof x !== "object" || x === null) return null;
+  const o = x as AnyObj;
+
+  const id = typeof o["id"] === "number" ? o["id"] : null;
+  if (id === null) return null;
+
+  // condominio puede ser id numérico o un objeto
+  let condominio: number = 0;
+  const condRaw = o["condominio"];
+  if (typeof condRaw === "number") condominio = condRaw;
+  else if (typeof condRaw === "object" && condRaw !== null) {
+    const cid = (condRaw as AnyObj)["id"];
+    if (typeof cid === "number") condominio = cid;
+  }
+
+  const direccion = typeof o["direccion"] === "string" ? o["direccion"] : "";
+  const code = typeof o["code"] === "string" ? o["code"] : "";
+  const user = typeof o["user"] === "number" ? o["user"] : null;
+  const piso = typeof o["piso"] === "number" ? o["piso"] : null;
+  const manzano = typeof o["manzano"] === "string" ? o["manzano"] : null;
+
+  return { id, condominio, direccion, code, user, piso, manzano };
+}
+function normalizeUnidades(data: unknown): Unidad[] {
+  if (Array.isArray(data)) return data.map(coerceUnidad).filter((x): x is Unidad => x !== null);
+  if (typeof data === "object" && data !== null) {
+    const o = data as AnyObj;
+    const arr: unknown[] = Array.isArray(o["results"])
+      ? (o["results"] as unknown[])
+      : Array.isArray(o["data"])
+      ? (o["data"] as unknown[])
+      : Array.isArray(o["items"])
+      ? (o["items"] as unknown[])
+      : [];
+    return arr.map(coerceUnidad).filter((x): x is Unidad => x !== null);
+  }
+  return [];
+}
+/* ------------------------------------------------------------------- */
+
+const UnidadPage: React.FC = () => {
+  const [unidades, setUnidades] = useState<Unidad[]>(() => readCache<Unidad>(UNITS_CACHE));
+  const [condominios, setCondominios] = useState<Condominio[]>(() => readCache<Condominio>(CONDOS_CACHE));
+
+  const [form, setForm] = useState<CreateUnidadPayload>({
+    condominio: 0, direccion: "", code: "", user: null, piso: null, manzano: null,
+  });
+  const [flash, setFlash] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [creating, setCreating] = useState(false);
+
+  async function loadCondominiosForSelect(): Promise<Condominio[]> {
+    const qs = new URLSearchParams({ page_size: "1000", limit: "1000", ordering: "-id" });
+    const raw = await fetchJson<unknown>(`/api/v1/condominios/?${qs.toString()}`);
+    return normalizeCondominios(raw);
+  }
+
+  useEffect(() => {
+    (async () => {
+      setLoading(true);
+      setFlash(null);
+      try {
+        const [uniRaw, conds] = await Promise.all([
+          fetchJson<unknown>("/api/v1/unidades/"),
+          loadCondominiosForSelect(),
+        ]);
+        const uni = normalizeUnidades(uniRaw);
+
+        // merge con cache para no “perder” datos si el server devuelve vacío
+        const mergedUnits = uni.length > 0 ? mergeById(unidades, uni) : unidades;
+        const mergedConds = conds.length > 0 ? mergeById(condominios, conds) : condominios;
+
+        setUnidades(mergedUnits);
+        setCondominios(mergedConds);
+        writeCache(UNITS_CACHE, mergedUnits);
+        writeCache(CONDOS_CACHE, mergedConds);
+
+        if (mergedConds.length > 0 && form.condominio === 0) {
+          setForm((f) => ({ ...f, condominio: mergedConds[0].id }));
+        }
+      } catch (e: unknown) {
+        setFlash(e instanceof Error ? e.message : "Error cargando");
+      } finally {
+        setLoading(false);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // crear unidad
-  async function handleCreateUnidad(e?: React.FormEvent) {
-    if (e) e.preventDefault();
-    setUnidadError(null);
+  const condSelected = useMemo(
+    () => condominios.find((c) => c.id === Number(form.condominio)) ?? null,
+    [condominios, form.condominio]
+  );
+  const isVertical = condSelected?.tipo === "vertical";
 
-    if (!fCode.trim()) {
-      setUnidadError("El código es obligatorio.");
-      return;
-    }
+  const onChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setForm((s) => ({ ...s, [name]: name === "condominio" ? Number(value) : value }));
+  };
 
-    const payload: CreateUnidadPayload = {
-      code: fCode.trim(),
-      is_active: fActive,
-    };
+  const isValid =
+    Number(form.condominio) > 0 &&
+    form.direccion.trim().length >= 3 &&
+    form.code.trim().length >= 1;
 
-    setCreatingUnidad(true);
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isValid || creating) return;
+    setCreating(true);
+    setFlash(null);
     try {
-      const created = await svc.createUnidad(payload);
-      setItems((s) => [created, ...s]);
-      setFCode("");
-      setFActive(true);
-      setOpenUnidadForm(false);
-    } catch (err) {
-      setUnidadError(err instanceof Error ? err.message : String(err));
+      const payload: CreateUnidadPayload = {
+        condominio: Number(form.condominio),
+        direccion: form.direccion.trim(),
+        code: form.code.trim(),
+        user: form.user ?? null,
+        piso: isVertical ? (form.piso !== null ? Number(form.piso) || null : null) : null,
+        manzano: !isVertical ? (form.manzano ? String(form.manzano) : null) : null,
+      };
+      const nueva = await createUnidad(payload);
+      const merged = mergeById([nueva], unidades);
+      setUnidades(merged);
+      writeCache(UNITS_CACHE, merged);
+      setForm({
+        condominio: condominios[0]?.id ?? 0, direccion: "", code: "", user: null, piso: null, manzano: null,
+      });
+      setFlash("Unidad creada");
+    } catch (e: unknown) {
+      setFlash(e instanceof Error ? e.message : "Error al crear");
     } finally {
-      setCreatingUnidad(false);
+      setCreating(false);
     }
-  }
+  };
 
-  // asignar residencia
-  async function handleCreateRes(e?: React.FormEvent) {
-    if (e) e.preventDefault();
-    setResError(null);
-
-    if (!fUser || !fUnidadId || !fStart.trim()) {
-      setResError("Usuario, unidad y fecha de inicio son obligatorios.");
-      return;
-    }
-
-    const payload: CreateAsignacionResidenciaPayload = {
-      user: Number(fUser),
-      unidad: Number(fUnidadId),
-      is_owner: fOwner,
-      tipo_ocupacion: fTipoOcup,
-      status: fStatus,
-      start: fStart,
-    };
-
-    setCreatingRes(true);
-    try {
-      const created = await svc.createAsignacionResidencia(payload);
-      setResidencias((s) => [created, ...s]);
-      setFUser("");
-      setFUnidadId("");
-      setFOwner(false);
-      setFTipoOcup("propietario");
-      setFStatus("activa");
-      setFStart("");
-      setOpenResForm(false);
-    } catch (err) {
-      setResError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setCreatingRes(false);
-    }
-  }
-
-  // procesar datos
-  const data = items
-    .map((u) => {
-      const asignacion = residencias.find((r) => r.unidad === u.id);
-      return { ...u, asignacion };
-    })
-    .filter((u) => u.code.toLowerCase().includes(search.toLowerCase()))
-    .sort((a, b) => {
-      if (orderBy === "codigo") return a.code.localeCompare(b.code);
-      if (orderBy === "estado") return Number(b.is_active) - Number(a.is_active);
-      if (orderBy === "asignado") return (b.asignacion ? 1 : 0) - (a.asignacion ? 1 : 0);
-      return 0;
-    });
+  // para mostrar nombre del condominio en la tabla
+  const condNameById = useMemo(() => {
+    const m = new Map<number, string>();
+    for (const c of condominios) m.set(c.id, c.name);
+    return m;
+  }, [condominios]);
 
   return (
     <div className="module-container">
-      <div className="breadcrumbs">Vivienda / Unidades</div>
-
-      {/* crear unidad */}
       <div className="module-card">
-        <div className="card-header">
-          <h2 className="card-title">Unidades</h2>
-          <div style={{ display: "flex", gap: 8 }}>
-            <input
-              placeholder="Buscar por código"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-               min={1}
-              className="search-input"
-            />
-            <select
-              value={orderBy}
-              onChange={(e) =>
-                setOrderBy(e.target.value as "codigo" | "estado" | "asignado")
-              }
-            >
-              <option value="codigo">Ordenar por Código</option>
-              <option value="estado">Ordenar por Estado</option>
-              <option value="asignado">Ordenar por Asignado</option>
+        <h2>Crear Unidad</h2>
+        <form className="module-form" onSubmit={onSubmit} noValidate>
+          <div className="form-group">
+            <label className="form-label">Condominio *</label>
+            <select className="form-input" name="condominio" value={form.condominio} onChange={onChange}>
+              <option value={0}>-- Selecciona --</option>
+              {condominios.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name} ({c.tipo})
+                </option>
+              ))}
             </select>
-            <button className="btn" onClick={() => setOpenUnidadForm((s) => !s)}>
-              {openUnidadForm ? "Cancelar" : "Nueva unidad"}
-            </button>
           </div>
-        </div>
 
-        {openUnidadForm && (
-          <form className="module-form" onSubmit={handleCreateUnidad}>
-            <input
-              placeholder="Código ej: A-101"
-              value={fCode}
-              onChange={(e) => setFCode(e.target.value)}
-            />
-            <label>
-              <input
-                type="checkbox"
-                checked={fActive}
-                onChange={(e) => setFActive(e.target.checked)}
-              />{" "}
-              Activa
-            </label>
-            <button className="btn" type="submit" disabled={creatingUnidad}>
-              {creatingUnidad ? "Creando..." : "Registrar"}
-            </button>
-            {unidadError && <div style={{ color: "red" }}>{unidadError}</div>}
-          </form>
-        )}
+          <div className="form-group">
+            <label className="form-label">Dirección *</label>
+            <input className="form-input" name="direccion" value={form.direccion} onChange={onChange} />
+          </div>
 
-        {/* tabla unidades */}
-        {loading ? (
-          <div>Cargando unidades...</div>
-        ) : error ? (
-          <div style={{ color: "red" }}>{error}</div>
+          <div className="form-group">
+            <label className="form-label">Código *</label>
+            <input className="form-input" name="code" value={form.code} onChange={onChange} />
+          </div>
+
+          {isVertical ? (
+            <div className="form-group">
+              <label className="form-label">Piso</label>
+              <input className="form-input" name="piso" type="number" value={form.piso ?? ""} onChange={onChange} />
+            </div>
+          ) : (
+            <div className="form-group">
+              <label className="form-label">Manzano</label>
+              <input className="form-input" name="manzano" value={form.manzano ?? ""} onChange={onChange} />
+            </div>
+          )}
+
+          <button className="btn" type="submit" disabled={!isValid || creating}>
+            {creating ? "Creando..." : "Crear"}
+          </button>
+        </form>
+        {flash && <div style={{ marginBlockStart: 8 }}>{flash}</div>}
+      </div>
+
+      <div className="module-card">
+        <h2>Unidades</h2>
+        {loading && unidades.length === 0 ? (
+          <p>Cargando...</p>
+        ) : unidades.length === 0 ? (
+          <p>No hay registros.</p>
         ) : (
-          <table className="table" style={{ marginTop: 12 }}>
+          <table className="table">
             <thead>
               <tr>
-                <th>Código</th>
-                <th>Estado</th>
-                <th>Asignado</th>
-                <th>Residente</th>
+                <th>Condominio</th><th>Código</th><th>Dirección</th><th>Piso</th><th>Manzano</th>
               </tr>
             </thead>
             <tbody>
-              {data.length === 0 ? (
-                <tr>
-                  <td colSpan={4} style={{ textAlign: "center" }}>
-                    No hay unidades registradas.
-                  </td>
+              {unidades.map((u) => (
+                <tr key={u.id}>
+                  <td>{condNameById.get(u.condominio) ?? u.condominio}</td>
+                  <td>{u.code}</td>
+                  <td>{u.direccion}</td>
+                  <td>{u.piso ?? "-"}</td>
+                  <td>{u.manzano ?? "-"}</td>
                 </tr>
-              ) : (
-                data.map((u) => (
-                  <tr key={u.id}>
-                    <td>{u.code}</td>
-                    <td>{u.is_active ? "Activa" : "Inactiva"}</td>
-                    <td>{u.asignacion ? "Sí" : "No"}</td>
-                    <td>
-                      {u.asignacion
-                        ? `${u.asignacion.user} (${u.asignacion.tipo_ocupacion})`
-                        : "-"}
-                    </td>
-                  </tr>
-                ))
-              )}
+              ))}
             </tbody>
           </table>
         )}
       </div>
-
-      {/* asignar residencia */}
-      <div className="module-card" style={{ marginTop: 20 }}>
-        <div className="card-header">
-          <h2 className="card-title">Asignar residencia</h2>
-          <button className="btn" onClick={() => setOpenResForm((s) => !s)}>
-            {openResForm ? "Cancelar" : "Asignar"}
-          </button>
-        </div>
-
-        {openResForm && (
-          <form className="module-form" onSubmit={handleCreateRes}>
-            <input
-              placeholder="Usuario (id)"
-              value={fUser}
-              onChange={(e) => setFUser(Number(e.target.value) || "")}
-            />
-            <input
-              placeholder="Unidad (id)"
-              value={fUnidadId}
-              onChange={(e) => setFUnidadId(Number(e.target.value) || "")}
-            />
-            <label>
-              <input
-                type="checkbox"
-                checked={fOwner}
-                onChange={(e) => setFOwner(e.target.checked)}
-              />{" "}
-              Es dueño
-            </label>
-            <select
-              value={fTipoOcup}
-              onChange={(e) =>
-                setFTipoOcup(
-                  e.target.value as "propietario" | "inquilino" | "otro"
-                )
-              }
-            >
-              <option value="propietario">Propietario</option>
-              <option value="inquilino">Inquilino</option>
-              <option value="otro">Otro</option>
-            </select>
-            <select
-              value={fStatus}
-              onChange={(e) =>
-                setFStatus(e.target.value as "activa" | "inactiva")
-              }
-            >
-              <option value="activa">Activa</option>
-              <option value="inactiva">Inactiva</option>
-            </select>
-            <input
-              type="date"
-              value={fStart}
-              onChange={(e) => setFStart(e.target.value)}
-            />
-            <button className="btn" type="submit" disabled={creatingRes}>
-              {creatingRes ? "Asignando..." : "Asignar"}
-            </button>
-            {resError && <div style={{ color: "red" }}>{resError}</div>}
-          </form>
-        )}
-      </div>
     </div>
   );
-}
+};
+
+export default UnidadPage;
